@@ -26,6 +26,18 @@ El campo clave es `data.vulnerabilities.matches[]`, con subcampos `vulnerability
 
 Los escaneos se persisten en `localStorage` bajo la clave `beracode_scans`.
 
+## Workflow de git
+
+Siempre trabajar directamente en `main`. El flujo estándar al terminar cambios es:
+
+```sh
+git add <archivos>
+git commit -m "tipo: descripción"
+git push origin main
+```
+
+No usar ramas de feature ni pull requests para este proyecto. Commit y push a `main` como paso final de cada tarea.
+
 ## Cómo probar cambios
 
 Abrir el `index.html` directamente en el navegador (no hace falta servidor). Si hay cambios en `tweaks-panel.jsx`, recargar la página.
