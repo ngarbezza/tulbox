@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Beracode</title>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2128;
+    --surface3: #222831;
+    --border: #30363d;
+    --border-subtle: #21262d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --text-faint: #484f58;
+    --accent: #4493f8;
+    --critical: #f85149;
+    --high:     #e09d3c;
+    --medium:   #4493f8;
+    --low:      #3fb950;
+    --critical-bg: rgba(248,81,73,0.12);
+    --high-bg:     rgba(224,157,60,0.12);
+    --medium-bg:   rgba(68,147,248,0.12);
+    --low-bg:      rgba(63,185,80,0.12);
+    --radius: 8px;
+    --font: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --font-ui: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-ui); }
+  #root { height: 100%; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .mono { font-family: var(--font); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+// ─── Seed scan (the attached result.json) ────────────────────────────────────
+const SEED_MATCHES = [
+  { id:"GHSA-j288-q9x7-2f5v", severity:"Medium", cvss:6.5, risk:0.0207, pkg:"commons-lang3", version:"3.17.0", fix:"3.18.0", cve:"CVE-2025-48924", epss:0.00036, epssP:10.46, description:"Apache Commons Lang is vulnerable to Uncontrolled Recursion when processing long inputs", detail:"The methods ClassUtils.getClass(...) can throw StackOverflowError on very long inputs.", cwe:"CWE-674", source:"https://github.com/advisories/GHSA-j288-q9x7-2f5v" },
+  { id:"GHSA-72hv-8253-57qq", severity:"Medium", cvss:6.9, risk:0, pkg:"jackson-core", version:"2.19.2", fix:"2.21.1", cve:null, epss:null, epssP:null, description:"jackson-core: Number Length Constraint Bypass in Async Parser Leads to Potential DoS", detail:"In versions prior to 2.21.1, the async parser does not enforce number length constraints correctly.", cwe:null, source:"https://github.com/advisories/GHSA-72hv-8253-57qq" },
+  { id:"GHSA-qqpg-mvqg-649v", severity:"Low", cvss:1.8, risk:0.00288, pkg:"logback-core", version:"1.5.20", fix:"1.5.25", cve:"CVE-2026-1225", epss:0.00012, epssP:1.77, description:"Logback allows an attacker to instantiate classes already present on the class path", detail:"ACE vulnerability in configuration file processing by logback-core up to 1.5.24.", cwe:"CWE-20", source:"https://github.com/advisories/GHSA-qqpg-mvqg-649v" },
+  { id:"GHSA-84h7-rjj3-6jx4", severity:"Medium", cvss:6.5, risk:0.01725, pkg:"netty-codec-http", version:"4.1.128.Final", fix:"4.1.129.Final", cve:"CVE-2025-67735", epss:0.0003, epssP:8.62, description:"Netty has a CRLF Injection vulnerability in HttpRequestEncoder", detail:"CRLF injection with the request URI when constructing a request leads to request smuggling.", cwe:"CWE-93", source:"https://github.com/advisories/GHSA-84h7-rjj3-6jx4" },
+  { id:"GHSA-pwqr-wmgm-9rr8", severity:"High", cvss:7.5, risk:0.01125, pkg:"netty-codec-http", version:"4.1.128.Final", fix:"4.1.132.Final", cve:"CVE-2026-33870", epss:0.00015, epssP:3.08, description:"Netty: HTTP Request Smuggling via Chunked Extension Quoted-String Parsing", detail:"Netty incorrectly parses quoted strings in chunked transfer encoding, enabling request smuggling.", cwe:"CWE-444", source:"https://github.com/advisories/GHSA-pwqr-wmgm-9rr8" },
+  { id:"GHSA-w9fj-cfpg-grvv", severity:"High", cvss:7.5, risk:0.02997, pkg:"netty-codec-http2", version:"4.1.128.Final", fix:"4.1.132.Final", cve:"CVE-2026-33871", epss:0.00037, epssP:10.69, description:"Netty HTTP/2 CONTINUATION Frame Flood DoS via Zero-Byte Frame Bypass", detail:"HTTP/2 CONTINUATION frame flood attacks using zero-byte frames can lead to denial of service.", cwe:"CWE-770", source:"https://github.com/advisories/GHSA-w9fj-cfpg-grvv" },
+  { id:"GHSA-v3gw-h79x-4prj", severity:"Medium", cvss:6.5, risk:0.05014, pkg:"spring-security-core", version:"6.5.6", fix:"6.5.7", cve:"CVE-2026-22233", epss:0.00115, epssP:29.2, description:"Spring Security Authorization Bypass", detail:"Spring Security is vulnerable to authorization bypass in certain method-level security configurations.", cwe:"CWE-863", source:"https://github.com/advisories/GHSA-v3gw-h79x-4prj" },
+  { id:"GHSA-9prh-257m-8n2c", severity:"Medium", cvss:5.3, risk:0.02576, pkg:"spring-security-core", version:"6.5.6", fix:"6.5.7", cve:"CVE-2026-22234", epss:0.00092, epssP:25.7, description:"Spring Security Remote Code Execution via SpEL", detail:"User-controlled data passed into Spring Security expressions without proper sanitization.", cwe:"CWE-917", source:"https://github.com/advisories/GHSA-9prh-257m-8n2c" },
+  { id:"GHSA-3r75-p2h7-m62g", severity:"High", cvss:7.5, risk:0.0375, pkg:"spring-security-web", version:"6.5.6", fix:"6.5.7", cve:"CVE-2026-22236", epss:0.00092, epssP:25.7, description:"Spring Security CSRF bypass via header manipulation", detail:"Spring Security CSRF protection can be bypassed via custom header manipulation.", cwe:"CWE-352", source:"https://github.com/advisories/GHSA-3r75-p2h7-m62g" },
+  { id:"GHSA-6hcq-hmm3-jj3c-wf", severity:"Low", cvss:2.6, risk:0.02576, pkg:"spring-webflux", version:"6.2.12", fix:"6.2.17", cve:"CVE-2026-22735", epss:0.00092, epssP:25.66, description:"Spring WebFlux Server Sent Event stream corruption", detail:"Spring WebFlux applications are vulnerable to stream corruption when using SSE.", cwe:"CWE-667", source:"https://github.com/advisories/GHSA-6hcq-hmm3-jj3c" },
+  { id:"GHSA-4773-3jfm-qmx3-wf", severity:"Medium", cvss:5.9, risk:0.05014, pkg:"spring-webflux", version:"6.2.12", fix:"6.2.17", cve:"CVE-2026-22737", epss:0.00092, epssP:25.57, description:"Spring Framework Improper Path Limitation with Script View Templates (WebFlux)", detail:"Script template views in Spring WebFlux can disclose files outside configured locations.", cwe:"CWE-22", source:"https://github.com/advisories/GHSA-4773-3jfm-qmx3" },
+  { id:"GHSA-6hcq-hmm3-jj3c", severity:"Low", cvss:2.6, risk:0.02576, pkg:"spring-webmvc", version:"6.2.12", fix:"6.2.17", cve:"CVE-2026-22735", epss:0.00092, epssP:25.66, description:"Spring MVC Server Sent Event stream corruption", detail:"Spring MVC applications are vulnerable to stream corruption when using SSE.", cwe:"CWE-667", source:"https://github.com/advisories/GHSA-6hcq-hmm3-jj3c" },
+  { id:"GHSA-4773-3jfm-qmx3", severity:"Medium", cvss:5.9, risk:0.05014, pkg:"spring-webmvc", version:"6.2.12", fix:"6.2.17", cve:"CVE-2026-22737", epss:0.00092, epssP:25.57, description:"Spring Framework Improper Path Limitation with Script View Templates (MVC)", detail:"Script template views in Spring MVC can disclose files outside configured locations.", cwe:"CWE-22", source:"https://github.com/advisories/GHSA-4773-3jfm-qmx3" },
+  { id:"GHSA-24j9-x2wg-9qv6", severity:"Medium", cvss:6.5, risk:0.09142, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.54", cve:"CVE-2026-34500", epss:0.00159, epssP:36.3, description:"Apache Tomcat: CLIENT_CERT authentication does not fail as expected", detail:"CLIENT_CERT authentication bypass when soft fail is disabled and FFM is used.", cwe:"CWE-287", source:"https://github.com/advisories/GHSA-24j9-x2wg-9qv6" },
+  { id:"GHSA-95jq-rwvf-vjx4", severity:"Critical", cvss:9.1, risk:0.031675, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.53", cve:"CVE-2026-29145", epss:0.00035, epssP:10.04, description:"Apache Tomcat: CLIENT_CERT authentication bypass (Critical)", detail:"Authentication bypass in Apache Tomcat CLIENT_CERT allows unauthenticated access.", cwe:"CWE-287", source:"https://github.com/advisories/GHSA-95jq-rwvf-vjx4" },
+  { id:"GHSA-9m3c-qcxr-9x87", severity:"Medium", cvss:6.1, risk:0.020125, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.53", cve:"CVE-2026-25854", epss:0.00035, epssP:10.39, description:"Apache Tomcat has an Open Redirect vulnerability", detail:"Open redirect via LoadBalancerDrainingValve in Apache Tomcat.", cwe:"CWE-601", source:"https://github.com/advisories/GHSA-9m3c-qcxr-9x87" },
+  { id:"GHSA-fpj8-gq4v-p354", severity:"Critical", cvss:9.1, risk:0.032385, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.50", cve:"CVE-2025-66614", epss:0.00051, epssP:15.74, description:"Apache Tomcat - Client certificate verification bypass", detail:"Remote unauthenticated attackers can bypass certificate-based authentication.", cwe:"CWE-295", source:"https://github.com/advisories/GHSA-fpj8-gq4v-p354" },
+  { id:"GHSA-mgp5-rv84-w37q", severity:"High", cvss:7.5, risk:0.0705, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.52", cve:"CVE-2026-24734", epss:0.00094, epssP:25.89, description:"Apache Tomcat Improper Input Validation", detail:"Improper input validation allows attackers to manipulate server state.", cwe:"CWE-20", source:"https://github.com/advisories/GHSA-mgp5-rv84-w37q" },
+  { id:"GHSA-qq5r-98hh-rxc9", severity:"Low", cvss:3.7, risk:0.045315, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.50", cve:"CVE-2026-24733", epss:0.00159, epssP:36.33, description:"Apache Tomcat - Security constraint bypass with HTTP/0.9", detail:"Security constraint bypass using HTTP/0.9 protocol requests.", cwe:"CWE-20", source:"https://github.com/advisories/GHSA-qq5r-98hh-rxc9" },
+  { id:"GHSA-rgh5-2p79-4x4r", severity:"High", cvss:7.5, risk:0.07, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.52", cve:"CVE-2026-24732", epss:0.00094, epssP:25.5, description:"Apache Tomcat partial PUT allows remote code execution", detail:"Partial PUT vulnerability allows unauthenticated remote code execution.", cwe:"CWE-94", source:"https://github.com/advisories/GHSA-rgh5-2p79-4x4r" },
+  { id:"GHSA-v2w3-8r2w-7xhv", severity:"Critical", cvss:9.8, risk:0.098, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.52", cve:"CVE-2026-24731", epss:0.00201, epssP:42.1, description:"Apache Tomcat: Remote Code Execution via deserialization", detail:"Deserialization vulnerability allows remote unauthenticated code execution.", cwe:"CWE-502", source:"https://github.com/advisories/GHSA-v2w3-8r2w-7xhv" },
+];
+
+const SEED_SCAN = {
+  id: 'seed',
+  name: 'becom-catalog-1.20.0.jar',
+  scannedAt: '2026-05-05T15:27:26-03:00',
+  matches: SEED_MATCHES,
+};
+
+// ─── JSON parser ─────────────────────────────────────────────────────────────
+function parseVeracodeJson(json, filename) {
+  try {
+    const data = JSON.parse(json);
+    const rawMatches = data?.vulnerabilities?.matches || [];
+    const ts = data?.vulnerabilities?.descriptor?.timestamp || new Date().toISOString();
+    const matches = rawMatches.map(m => ({
+      id: m.vulnerability?.id || 'unknown',
+      severity: m.vulnerability?.severity || 'Unknown',
+      cvss: m.vulnerability?.cvss?.[0]?.metrics?.baseScore ?? 0,
+      risk: m.vulnerability?.risk ?? 0,
+      pkg: m.artifact?.name || 'unknown',
+      version: m.artifact?.version || '',
+      fix: m.matchDetails?.[0]?.fix?.suggestedVersion || m.vulnerability?.fix?.versions?.[0] || '—',
+      cve: m.relatedVulnerabilities?.[0]?.id || null,
+      epss: m.vulnerability?.epss?.[0]?.epss ?? null,
+      epssP: m.vulnerability?.epss?.[0]?.percentile != null ? +(m.vulnerability.epss[0].percentile * 100).toFixed(2) : null,
+      description: m.vulnerability?.description || '',
+      detail: m.relatedVulnerabilities?.[0]?.description || m.vulnerability?.description || '',
+      cwe: m.vulnerability?.cwes?.[0]?.cwe || null,
+      source: m.vulnerability?.dataSource || '',
+    }));
+    const jarPaths = rawMatches.map(m => m.artifact?.locations?.[0]?.path).filter(Boolean);
+    const jar = jarPaths[0] ? jarPaths[0].split('/').pop() : (filename || 'unknown');
+    return { id: crypto.randomUUID(), name: jar, scannedAt: ts, matches };
+  } catch(e) {
+    return null;
+  }
+}
+
+// ─── Severity helpers ────────────────────────────────────────────────────────
+const SEV_ORDER = { Critical:0, High:1, Medium:2, Low:3 };
+const sevColor = s => ({ Critical:'var(--critical)', High:'var(--high)', Medium:'var(--medium)', Low:'var(--low)' }[s] || '#888');
+const sevBg    = s => ({ Critical:'var(--critical-bg)', High:'var(--high-bg)', Medium:'var(--medium-bg)', Low:'var(--low-bg)' }[s] || 'transparent');
+
+function scanSummary(matches) {
+  const c = { Critical:0, High:0, Medium:0, Low:0 };
+  matches.forEach(v => { if (c[v.severity] !== undefined) c[v.severity]++; });
+  const pkgs = new Set(matches.map(v=>v.pkg)).size;
+  return { ...c, total: matches.length, pkgs };
+}
+
+function relativeTime(iso) {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  if (diff < 86400*30) return `${Math.floor(diff/86400)}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleString(undefined, { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+// ─── Shared UI atoms ─────────────────────────────────────────────────────────
+function Logo() {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+      <svg width="30" height="34" viewBox="0 0 30 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="shieldGrad" x1="0" y1="0" x2="30" y2="34" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#06B1E5"/>
+            <stop offset="100%" stopColor="#1a7a8a"/>
+          </linearGradient>
+          <linearGradient id="vGrad" x1="7" y1="9" x2="23" y2="26" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#ffffff"/>
+            <stop offset="100%" stopColor="#d0f4ff"/>
+          </linearGradient>
+        </defs>
+        {/* Shield shape — classic football crest */}
+        <path d="M15 1L2 5.5V17C2 24.5 8 30.5 15 33C22 30.5 28 24.5 28 17V5.5L15 1Z" fill="url(#shieldGrad)"/>
+        {/* Orange accent stripe top */}
+        <path d="M15 1L2 5.5V9L15 5L28 9V5.5L15 1Z" fill="#FF6B00" opacity="0.85"/>
+        {/* V mark — bold, Veracode-style */}
+        <path d="M8 11L13.5 24L15 21L16.5 24L22 11H18.5L15 19.5L11.5 11H8Z" fill="url(#vGrad)"/>
+      </svg>
+      <span style={{ fontWeight:700, fontSize:16, letterSpacing:'-0.02em', color:'var(--text)' }}>Beracode</span>
+    </div>
+  );
+}
+
+function SevBadge({ sev, small }) {
+  return (
+    <span style={{
+      display:'inline-flex', alignItems:'center',
+      padding: small ? '2px 7px' : '3px 10px',
+      borderRadius:99, fontSize: small?11:12, fontWeight:600, letterSpacing:'0.03em',
+      color:sevColor(sev), background:sevBg(sev), border:`1px solid ${sevColor(sev)}33`, whiteSpace:'nowrap',
+    }}>{sev}</span>
+  );
+}
+
+function CvssBar({ score }) {
+  const pct = (score/10)*100;
+  const color = score>=9?'var(--critical)':score>=7?'var(--high)':score>=4?'var(--medium)':'var(--low)';
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+      <div style={{ flex:1, height:4, borderRadius:2, background:'var(--border)', overflow:'hidden' }}>
+        <div style={{ width:`${pct}%`, height:'100%', background:color, borderRadius:2, transition:'width 0.4s' }}/>
+      </div>
+      <span style={{ fontSize:12, fontWeight:700, color, fontFamily:'var(--font)', minWidth:28, textAlign:'right' }}>{score}</span>
+    </div>
+  );
+}
+
+// ─── Mini severity donut (SVG) ────────────────────────────────────────────────
+function SevDonut({ summary, size=56 }) {
+  const segs = ['Critical','High','Medium','Low'];
+  const total = summary.total || 1;
+  const r = 20, cx = 28, cy = 28, circ = 2*Math.PI*r;
+  let offset = 0;
+  const arcs = segs.map(s => {
+    const pct = (summary[s]||0) / total;
+    const dash = pct * circ;
+    const arc = { sev:s, dash, offset, pct };
+    offset += dash;
+    return arc;
+  });
+  return (
+    <svg width={size} height={size} viewBox="0 0 56 56" style={{ flexShrink:0 }}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border)" strokeWidth="8"/>
+      {arcs.filter(a=>a.dash>0).map(a => (
+        <circle key={a.sev} cx={cx} cy={cy} r={r} fill="none"
+          stroke={sevColor(a.sev)} strokeWidth="8"
+          strokeDasharray={`${a.dash} ${circ-a.dash}`}
+          strokeDashoffset={circ/4 - a.offset}
+          style={{ transform:'rotate(-90deg)', transformOrigin:'50% 50%' }}
+        />
+      ))}
+      <text x={cx} y={cy+5} textAnchor="middle" style={{ fontSize:14, fontWeight:700, fill:'var(--text)', fontFamily:'var(--font)' }}>{summary.total}</text>
+    </svg>
+  );
+}
+
+// ─── Drop Zone ───────────────────────────────────────────────────────────────
+function DropZone({ onAdd }) {
+  const [dragging, setDragging] = useState(false);
+  const [error, setError] = useState(null);
+  const inputRef = useRef();
+
+  function handleFiles(files) {
+    setError(null);
+    const jsonFiles = [...files].filter(f => f.name.endsWith('.json'));
+    if (!jsonFiles.length) { setError('Please drop a .json file'); return; }
+    jsonFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const scan = parseVeracodeJson(e.target.result, file.name);
+        if (!scan) { setError(`Could not parse ${file.name}`); return; }
+        onAdd(scan);
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  return (
+    <div
+      onDragOver={e => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={e => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files); }}
+      onClick={() => inputRef.current.click()}
+      style={{
+        border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border)'}`,
+        borderRadius: 12,
+        padding: '36px 24px',
+        textAlign: 'center',
+        cursor: 'pointer',
+        background: dragging ? 'rgba(68,147,248,0.06)' : 'transparent',
+        transition: 'all 0.15s',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+      }}>
+      <input ref={inputRef} type="file" accept=".json" multiple style={{ display:'none' }} onChange={e => handleFiles(e.target.files)} />
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style={{ opacity: dragging ? 1 : 0.4, transition:'opacity 0.15s' }}>
+        <rect x="4" y="4" width="28" height="28" rx="6" stroke="var(--accent)" strokeWidth="1.5"/>
+        <path d="M18 24V13M18 13L14 17M18 13L22 17" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      <div style={{ fontSize:14, fontWeight:500, color: dragging ? 'var(--accent)' : 'var(--text-muted)' }}>
+        {dragging ? 'Release to add scan' : 'Drop result.json here'}
+      </div>
+      <div style={{ fontSize:12, color:'var(--text-faint)' }}>or click to browse · JSON from veracode scan --type directory</div>
+      {error && <div style={{ fontSize:12, color:'var(--critical)', marginTop:4 }}>{error}</div>}
+    </div>
+  );
+}
+
+// ─── Scan Card ────────────────────────────────────────────────────────────────
+function ScanCard({ scan, onClick, onDelete, isNew }) {
+  const [hover, setHover] = useState(false);
+  const s = useMemo(() => scanSummary(scan.matches), [scan.matches]);
+  const topSev = ['Critical','High','Medium','Low'].find(sv => s[sv] > 0);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: hover ? 'var(--surface2)' : 'var(--surface)',
+        border: `1px solid ${isNew ? 'var(--accent)44' : hover ? 'var(--border)' : 'var(--border-subtle)'}`,
+        borderRadius: 10,
+        overflow: 'hidden',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+        position: 'relative',
+        animation: isNew ? 'popIn 0.3s cubic-bezier(0.16,1,0.3,1)' : 'none',
+      }}
+      onClick={onClick}>
+
+      {/* Top accent bar */}
+      <div style={{ height:3, background: topSev ? sevColor(topSev) : 'var(--border)', opacity:0.7 }}/>
+
+      <div style={{ padding:'18px 20px', display:'flex', flexDirection:'column', gap:14 }}>
+        {/* Header row */}
+        <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+          <SevDonut summary={s} size={52} />
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:14, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontFamily:'var(--font)' }}>{scan.name}</div>
+            <div style={{ fontSize:11, color:'var(--text-faint)', marginTop:3 }}>{formatDate(scan.scannedAt)}</div>
+            <div style={{ fontSize:11, color:'var(--text-faint)', marginTop:1 }}>{relativeTime(scan.scannedAt)}</div>
+          </div>
+          {hover && (
+            <button
+              onClick={e => { e.stopPropagation(); onDelete(); }}
+              title="Remove"
+              style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-faint)', padding:'2px 4px', fontSize:16, lineHeight:1, borderRadius:4, flexShrink:0 }}
+              onMouseEnter={e => e.currentTarget.style.color='var(--critical)'}
+              onMouseLeave={e => e.currentTarget.style.color='var(--text-faint)'}>
+              ×
+            </button>
+          )}
+        </div>
+
+        {/* Severity row */}
+        <div style={{ display:'flex', gap:8 }}>
+          {['Critical','High','Medium','Low'].map(sv => (
+            <div key={sv} style={{
+              flex:1, textAlign:'center', padding:'6px 4px',
+              borderRadius:6, background: s[sv] > 0 ? sevBg(sv) : 'var(--surface2)',
+              border:`1px solid ${s[sv]>0 ? sevColor(sv)+'33' : 'transparent'}`,
+            }}>
+              <div style={{ fontSize:16, fontWeight:700, color: s[sv]>0 ? sevColor(sv) : 'var(--text-faint)', fontFamily:'var(--font)', lineHeight:1 }}>{s[sv]}</div>
+              <div style={{ fontSize:10, color:'var(--text-faint)', marginTop:2, letterSpacing:'0.03em' }}>{sv.slice(0,4)}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <span style={{ fontSize:11, color:'var(--text-faint)' }}>{s.pkgs} package{s.pkgs!==1?'s':''} affected</span>
+          <span style={{ fontSize:12, color:'var(--accent)', fontWeight:500 }}>View report →</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Detail Drawer ────────────────────────────────────────────────────────────
+function DetailDrawer({ vuln, onClose }) {
+  useEffect(() => {
+    const h = e => { if(e.key==='Escape') onClose(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose]);
+  if (!vuln) return null;
+  return (
+    <>
+      <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:100, backdropFilter:'blur(2px)', animation:'fadeIn 0.15s' }}/>
+      <div style={{ position:'fixed', right:0, top:0, bottom:0, width:460, background:'var(--surface)', borderLeft:'1px solid var(--border)', zIndex:101, display:'flex', flexDirection:'column', animation:'slideIn 0.2s cubic-bezier(0.16,1,0.3,1)', overflowY:'auto' }}>
+        <div style={{ padding:'20px 24px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'flex-start', gap:12 }}>
+          <div style={{ flex:1 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <SevBadge sev={vuln.severity}/>
+              {vuln.cve && <span style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font)' }}>{vuln.cve}</span>}
+            </div>
+            <div style={{ fontSize:12, color:'var(--accent)', fontFamily:'var(--font)', marginTop:8 }}>{vuln.id}</div>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:20, lineHeight:1, padding:'0 4px', borderRadius:4 }}>×</button>
+        </div>
+        <div style={{ padding:'20px 24px', flex:1, display:'flex', flexDirection:'column', gap:20 }}>
+          <div>
+            <div style={{ fontSize:14, fontWeight:600, color:'var(--text)', lineHeight:1.5, textWrap:'pretty' }}>{vuln.description}</div>
+            <div style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, marginTop:8, textWrap:'pretty' }}>{vuln.detail}</div>
+          </div>
+          <DSection label="Affected Package">
+            <KV label="Package" value={<span className="mono" style={{color:'var(--accent)'}}>{vuln.pkg}</span>}/>
+            <KV label="Current version" value={<span className="mono">{vuln.version}</span>}/>
+            <KV label="Fix available" value={<span className="mono" style={{color:'var(--low)'}}>→ {vuln.fix}</span>}/>
+          </DSection>
+          <DSection label="CVSS Score"><CvssBar score={vuln.cvss}/></DSection>
+          {vuln.cwe && <DSection label="Weakness"><span style={{ fontSize:13, color:'var(--text-muted)', fontFamily:'var(--font)' }}>{vuln.cwe}</span></DSection>}
+          {vuln.epss !== null && (
+            <DSection label="EPSS Score">
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <div style={{ flex:1, height:4, borderRadius:2, background:'var(--border)', overflow:'hidden' }}>
+                  <div style={{ width:`${vuln.epssP||0}%`, height:'100%', background:'var(--high)', borderRadius:2 }}/>
+                </div>
+                <span style={{ fontSize:12, fontFamily:'var(--font)', color:'var(--text-muted)' }}>{(vuln.epss*100).toFixed(3)}% ({vuln.epssP}th pct.)</span>
+              </div>
+            </DSection>
+          )}
+          <DSection label="References">
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              <a href={vuln.source} target="_blank" rel="noopener" style={{ fontSize:12, color:'var(--accent)', fontFamily:'var(--font)', wordBreak:'break-all', textDecoration:'none' }}>{vuln.id} (GHSA)</a>
+              {vuln.cve && <a href={`https://nvd.nist.gov/vuln/detail/${vuln.cve}`} target="_blank" rel="noopener" style={{ fontSize:12, color:'var(--accent)', fontFamily:'var(--font)', textDecoration:'none' }}>{vuln.cve} (NVD)</a>}
+            </div>
+          </DSection>
+        </div>
+      </div>
+    </>
+  );
+}
+function DSection({ label, children }) {
+  return <div><div style={{ fontSize:11, fontWeight:600, color:'var(--text-faint)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:8 }}>{label}</div>{children}</div>;
+}
+function KV({ label, value }) {
+  return <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderBottom:'1px solid var(--border-subtle)' }}><span style={{ fontSize:12, color:'var(--text-muted)' }}>{label}</span><span style={{ fontSize:13 }}>{value}</span></div>;
+}
+
+// ─── Report View ──────────────────────────────────────────────────────────────
+function ReportView({ scan, onBack }) {
+  const [sevFilter, setSevFilter]       = useState(null);
+  const [pkgFilter, setPkgFilter]       = useState(null);
+  const [search, setSearch]             = useState('');
+  const [selectedVuln, setSelectedVuln] = useState(null);
+  const [sortCol, setSortCol]           = useState('severity');
+  const [sortDir, setSortDir]           = useState('asc');
+
+  const packages = useMemo(() => {
+    const map = {};
+    scan.matches.forEach(v => {
+      if (!map[v.pkg]) map[v.pkg] = { version:v.version, vulns:[] };
+      map[v.pkg].vulns.push(v);
+    });
+    return map;
+  }, [scan]);
+
+  const summary = useMemo(() => scanSummary(scan.matches), [scan]);
+
+  const filtered = useMemo(() => {
+    let data = scan.matches;
+    if (sevFilter) data = data.filter(v=>v.severity===sevFilter);
+    if (pkgFilter) data = data.filter(v=>v.pkg===pkgFilter);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      data = data.filter(v => v.id.toLowerCase().includes(q) || v.pkg.toLowerCase().includes(q) || v.description.toLowerCase().includes(q) || (v.cve&&v.cve.toLowerCase().includes(q)));
+    }
+    data = [...data].sort((a,b) => {
+      let cmp = 0;
+      if (sortCol==='severity') cmp = (SEV_ORDER[a.severity]??9)-(SEV_ORDER[b.severity]??9);
+      else if (sortCol==='cvss') cmp = b.cvss-a.cvss;
+      else if (sortCol==='package') cmp = a.pkg.localeCompare(b.pkg);
+      return sortDir==='asc' ? cmp : -cmp;
+    });
+    return data;
+  }, [scan, sevFilter, pkgFilter, search, sortCol, sortDir]);
+
+  function toggleSort(col) {
+    if (sortCol===col) setSortDir(d=>d==='asc'?'desc':'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  }
+  const SortIco = ({col}) => sortCol===col ? <span style={{marginLeft:4,opacity:0.7}}>{sortDir==='asc'?'↑':'↓'}</span> : <span style={{marginLeft:4,opacity:0.2}}>↕</span>;
+
+  return (
+    <div style={{ height:'100vh', display:'flex', flexDirection:'column', background:'var(--bg)' }}>
+      {/* Topbar */}
+      <div style={{ borderBottom:'1px solid var(--border)', padding:'0 24px', display:'flex', alignItems:'center', gap:12, height:52, flexShrink:0 }}>
+        <button onClick={onBack} style={{ display:'flex', alignItems:'center', gap:6, background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:13, padding:'4px 8px', borderRadius:6 }}
+          onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
+          <span style={{ fontSize:16 }}>←</span> All scans
+        </button>
+        <div style={{ width:1, height:20, background:'var(--border)' }}/>
+        <Logo/>
+        <div style={{ marginLeft:'auto', textAlign:'right' }}>
+          <div style={{ fontSize:13, fontWeight:600, color:'var(--text)', fontFamily:'var(--font)' }}>{scan.name}</div>
+          <div style={{ fontSize:11, color:'var(--text-faint)' }}>{formatDate(scan.scannedAt)}</div>
+        </div>
+      </div>
+
+      <div style={{ flex:1, display:'grid', gridTemplateColumns:'244px 1fr', overflow:'hidden' }}>
+        {/* Sidebar */}
+        <div style={{ borderRight:'1px solid var(--border)', overflowY:'auto', padding:'16px 12px', display:'flex', flexDirection:'column', gap:20 }}>
+          <div style={{ position:'relative' }}>
+            <svg style={{ position:'absolute', left:9, top:'50%', transform:'translateY(-50%)', opacity:0.35 }} width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.4"/><path d="M9 9L11.5 11.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search CVE, package…"
+              style={{ width:'100%', padding:'7px 9px 7px 27px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', fontSize:12, fontFamily:'var(--font-ui)', outline:'none' }}/>
+          </div>
+
+          <div>
+            <div style={{ fontSize:10, fontWeight:600, color:'var(--text-faint)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:8 }}>Severity</div>
+            {['Critical','High','Medium','Low'].map(s => {
+              const count = scan.matches.filter(v=>v.severity===s).length;
+              const active = sevFilter===s;
+              return (
+                <button key={s} onClick={()=>setSevFilter(active?null:s)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'5px 8px', borderRadius:6, border:'none', cursor:'pointer', background:active?sevBg(s):'transparent', textAlign:'left', transition:'background 0.1s', marginBottom:2 }}
+                  onMouseEnter={e=>{if(!active)e.currentTarget.style.background='var(--surface2)'}}
+                  onMouseLeave={e=>{if(!active)e.currentTarget.style.background='transparent'}}>
+                  <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                    <div style={{ width:7, height:7, borderRadius:'50%', background:sevColor(s) }}/>
+                    <span style={{ fontSize:12, color:active?sevColor(s):'var(--text)', fontWeight:active?600:400 }}>{s}</span>
+                  </div>
+                  <span style={{ fontSize:11, color:'var(--text-faint)', fontFamily:'var(--font)' }}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div>
+            <div style={{ fontSize:10, fontWeight:600, color:'var(--text-faint)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:8 }}>Packages</div>
+            {Object.entries(packages).sort((a,b)=>{
+              const tA = ['Critical','High','Medium','Low'].findIndex(s=>a[1].vulns.some(v=>v.severity===s));
+              const tB = ['Critical','High','Medium','Low'].findIndex(s=>b[1].vulns.some(v=>v.severity===s));
+              return tA-tB;
+            }).map(([name, info]) => {
+              const active = pkgFilter===name;
+              const topSev = ['Critical','High','Medium','Low'].find(s=>info.vulns.some(v=>v.severity===s));
+              return (
+                <button key={name} onClick={()=>setPkgFilter(active?null:name)} style={{ display:'grid', gridTemplateColumns:'1fr auto auto', gap:8, alignItems:'center', padding:'7px 8px', background:active?'var(--surface2)':'transparent', border:`1px solid ${active?'var(--border)':'transparent'}`, borderRadius:6, cursor:'pointer', textAlign:'left', width:'100%', transition:'all 0.1s', marginBottom:2 }}
+                  onMouseEnter={e=>{if(!active)e.currentTarget.style.background='var(--surface2)'}}
+                  onMouseLeave={e=>{if(!active)e.currentTarget.style.background='transparent'}}>
+                  <div style={{ overflow:'hidden' }}>
+                    <div style={{ fontSize:12, fontWeight:500, color:'var(--text)', fontFamily:'var(--font)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+                    <div style={{ height:3, borderRadius:2, background:'var(--border)', overflow:'hidden', marginTop:4 }}>
+                      {['Critical','High','Medium','Low'].map(s=>{
+                        const frac=info.vulns.filter(v=>v.severity===s).length/info.vulns.length;
+                        return frac>0?<div key={s} style={{width:`${frac*100}%`,height:'100%',background:sevColor(s),display:'inline-block'}}/>:null;
+                      })}
+                    </div>
+                  </div>
+                  {topSev && <SevBadge sev={topSev} small/>}
+                  <span style={{ fontSize:11, fontFamily:'var(--font)', color:'var(--text-faint)' }}>{info.vulns.length}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Main */}
+        <div style={{ overflowY:'auto', display:'flex', flexDirection:'column' }}>
+          {/* Summary strip */}
+          <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
+            {[
+              { label:'Total', value:summary.total, sub:`${summary.pkgs} packages`, color:'var(--text)', f:null },
+              { label:'Critical', value:summary.Critical, sub:'CVSS ≥ 9.0', color:'var(--critical)', f:'Critical' },
+              { label:'High', value:summary.High, sub:'CVSS 7–8.9', color:'var(--high)', f:'High' },
+              { label:'Medium', value:summary.Medium, sub:'CVSS 4–6.9', color:'var(--medium)', f:'Medium' },
+              { label:'Low', value:summary.Low, sub:'CVSS < 4', color:'var(--low)', f:'Low' },
+            ].map(c => {
+              const active = sevFilter===c.f;
+              return (
+                <button key={c.label} onClick={()=>setSevFilter(active?null:c.f)} style={{ background:active?(c.f?sevBg(c.f):'var(--surface2)'):'var(--surface)', border:`1px solid ${active?(c.f?sevColor(c.f)+'55':'var(--accent)'):'var(--border)'}`, borderRadius:8, padding:'12px 16px', cursor:'pointer', textAlign:'left', transition:'all 0.12s' }}>
+                  <div style={{ fontSize:28, fontWeight:700, color:c.color, fontFamily:'var(--font)', lineHeight:1 }}>{c.value}</div>
+                  <div style={{ fontSize:12, fontWeight:600, color:'var(--text)', marginTop:3 }}>{c.label}</div>
+                  <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:1 }}>{c.sub}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active filters bar */}
+          {(sevFilter||pkgFilter||search) && (
+            <div style={{ padding:'8px 20px', display:'flex', alignItems:'center', gap:8, borderBottom:'1px solid var(--border-subtle)', flexWrap:'wrap' }}>
+              <span style={{ fontSize:11, color:'var(--text-faint)' }}>Filters:</span>
+              {sevFilter && <Pill label={sevFilter} color={sevColor(sevFilter)} onRemove={()=>setSevFilter(null)}/>}
+              {pkgFilter && <Pill label={pkgFilter} onRemove={()=>setPkgFilter(null)}/>}
+              {search && <Pill label={`"${search}"`} onRemove={()=>setSearch('')}/>}
+              <button onClick={()=>{setSevFilter(null);setPkgFilter(null);setSearch('');}} style={{ fontSize:11, color:'var(--text-faint)', background:'none', border:'none', cursor:'pointer' }}>Clear all</button>
+              <span style={{ fontSize:11, color:'var(--text-faint)', marginLeft:'auto' }}>{filtered.length} finding{filtered.length!==1?'s':''}</span>
+            </div>
+          )}
+
+          {/* Table */}
+          <div style={{ flex:1 }}>
+            {filtered.length===0 ? (
+              <div style={{ padding:60, textAlign:'center', color:'var(--text-faint)' }}>
+                <div style={{ fontSize:28, marginBottom:10 }}>✓</div>
+                <div style={{ fontSize:13 }}>No findings match your filters</div>
+              </div>
+            ) : (
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                <thead>
+                  <tr style={{ borderBottom:'1px solid var(--border)' }}>
+                    {[{k:'severity',l:'Severity'},{k:'id',l:'ID'},{k:'description',l:'Description'},{k:'package',l:'Package'},{k:'cvss',l:'CVSS'},{k:'fix',l:'Fix'}].map(col=>(
+                      <th key={col.k} onClick={()=>['severity','cvss','package'].includes(col.k)&&toggleSort(col.k)}
+                        style={{ padding:'8px 14px', textAlign:'left', fontSize:10, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-faint)', background:'var(--surface)', position:'sticky', top:0, zIndex:1, cursor:['severity','cvss','package'].includes(col.k)?'pointer':'default', userSelect:'none', borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>
+                        {col.l}{['severity','cvss','package'].includes(col.k)&&<SortIco col={col.k}/>}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((v,i)=>{
+                    const rowKey = v.id+v.pkg+i;
+                    const active = selectedVuln && selectedVuln.id===v.id && selectedVuln.pkg===v.pkg;
+                    return (
+                      <React.Fragment key={rowKey}>
+                        <tr onClick={()=>setSelectedVuln(active?null:v)} style={{ cursor:'pointer', background:active?'var(--surface2)':'transparent', transition:'background 0.1s' }}
+                          onMouseEnter={e=>{if(!active)e.currentTarget.style.background='var(--surface2)'}}
+                          onMouseLeave={e=>{if(!active)e.currentTarget.style.background='transparent'}}>
+                          <td style={{ padding:'9px 14px' }}><SevBadge sev={v.severity} small/></td>
+                          <td style={{ padding:'9px 14px' }}>
+                            <div style={{ fontSize:11, color:'var(--accent)', fontFamily:'var(--font)' }}>{v.id}</div>
+                            {v.cve&&<div style={{ fontSize:10, color:'var(--text-faint)', fontFamily:'var(--font)', marginTop:1 }}>{v.cve}</div>}
+                          </td>
+                          <td style={{ padding:'9px 14px', maxWidth:320 }}>
+                            <div style={{ fontSize:12, color:'var(--text)', lineHeight:1.4, textWrap:'pretty' }}>{v.description}</div>
+                          </td>
+                          <td style={{ padding:'9px 14px' }}>
+                            <span style={{ fontSize:11, fontFamily:'var(--font)', color:'var(--text-muted)' }}>{v.pkg}</span>
+                            <div style={{ fontSize:10, color:'var(--text-faint)', fontFamily:'var(--font)' }}>{v.version}</div>
+                          </td>
+                          <td style={{ padding:'9px 14px', minWidth:120 }}><CvssBar score={v.cvss}/></td>
+                          <td style={{ padding:'9px 14px' }}><span style={{ fontSize:11, fontFamily:'var(--font)', color:'var(--low)' }}>{v.fix}</span></td>
+                        </tr>
+                        <tr style={{height:0}}><td colSpan={6} style={{padding:0,borderBottom:'1px solid var(--border-subtle)'}}/></tr>
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {selectedVuln && <DetailDrawer vuln={selectedVuln} onClose={()=>setSelectedVuln(null)}/>}
+    </div>
+  );
+}
+
+function Pill({ label, color, onRemove }) {
+  return (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'2px 8px', borderRadius:99, background:'var(--surface2)', border:'1px solid var(--border)', fontSize:11, color:color||'var(--text-muted)' }}>
+      {label}
+      <button onClick={onRemove} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-faint)', fontSize:13, lineHeight:1, padding:0 }}>×</button>
+    </span>
+  );
+}
+
+// ─── Home View ────────────────────────────────────────────────────────────────
+function HomeView({ scans, onOpen, onDelete, onAdd }) {
+  const [newId, setNewId] = useState(null);
+
+  function handleAdd(scan) {
+    onAdd(scan);
+    setNewId(scan.id);
+    setTimeout(() => setNewId(null), 2000);
+  }
+
+  const sorted = useMemo(() => [...scans].sort((a,b) => new Date(b.scannedAt)-new Date(a.scannedAt)), [scans]);
+
+  return (
+    <div style={{ minHeight:'100vh', background:'var(--bg)' }}>
+      {/* Header */}
+      <div style={{ borderBottom:'1px solid var(--border)', padding:'0 40px', display:'flex', alignItems:'center', height:60 }}>
+        <Logo/>
+        <span style={{ marginLeft:12, fontSize:12, color:'var(--text-faint)', borderLeft:'1px solid var(--border)', paddingLeft:12 }}>Veracode para el conurbano</span>
+      </div>
+
+      <div style={{ maxWidth:960, margin:'0 auto', padding:'40px 40px' }}>
+        {/* Page title */}
+        <div style={{ marginBottom:32 }}>
+          <h1 style={{ fontSize:24, fontWeight:700, color:'var(--text)', letterSpacing:'-0.02em' }}>Security Reports</h1>
+          <p style={{ fontSize:14, color:'var(--text-muted)', marginTop:6 }}>
+            {sorted.length} scan{sorted.length!==1?'s':''} · Results from <span className="mono" style={{fontSize:13}}>veracode scan --source &lt;folder&gt; --type directory</span>
+          </p>
+        </div>
+
+        {/* Drop zone */}
+        <div style={{ marginBottom:36 }}>
+          <DropZone onAdd={handleAdd}/>
+        </div>
+
+        {/* Grid */}
+        {sorted.length > 0 && (
+          <>
+            <div style={{ fontSize:11, fontWeight:600, color:'var(--text-faint)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:14 }}>Recent scans</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:16 }}>
+              {sorted.map(scan => (
+                <ScanCard key={scan.id} scan={scan} onClick={()=>onOpen(scan)} onDelete={()=>onDelete(scan.id)} isNew={scan.id===newId}/>
+              ))}
+            </div>
+          </>
+        )}
+
+        {sorted.length === 0 && (
+          <div style={{ textAlign:'center', color:'var(--text-faint)', padding:'60px 0' }}>
+            <div style={{ fontSize:40, marginBottom:12, opacity:0.3 }}>◎</div>
+            <div style={{ fontSize:14 }}>No scans yet — drop a result.json above to get started</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+function App() {
+  const { TweaksPanel, TweakSection, TweakRadio, useTweaks } = window;
+  const [tweaks, setTweak] = useTweaks(/*EDITMODE-BEGIN*/{
+    "theme": "dark"
+  }/*EDITMODE-END*/);
+
+  // Load scans from localStorage, seed with the example scan
+  const [scans, setScans] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('beracode_scans') || '[]');
+      if (saved.length) return saved;
+    } catch(e) {}
+    return [SEED_SCAN];
+  });
+  const [activeScan, setActiveScan] = useState(null);
+
+  useEffect(() => {
+    try { localStorage.setItem('beracode_scans', JSON.stringify(scans)); } catch(e) {}
+  }, [scans]);
+
+  useEffect(() => {
+    const vars = tweaks.theme === 'light'
+      ? { '--bg':'#f6f8fa', '--surface':'#ffffff', '--surface2':'#f0f2f4', '--surface3':'#e8ebef', '--border':'#d0d7de', '--border-subtle':'#e8ebef', '--text':'#1f2328', '--text-muted':'#656d76', '--text-faint':'#a0aab4' }
+      : { '--bg':'#0d1117', '--surface':'#161b22', '--surface2':'#1c2128', '--surface3':'#222831', '--border':'#30363d', '--border-subtle':'#21262d', '--text':'#e6edf3', '--text-muted':'#8b949e', '--text-faint':'#484f58' };
+    Object.entries(vars).forEach(([k,v]) => document.documentElement.style.setProperty(k,v));
+  }, [tweaks.theme]);
+
+  function addScan(scan) {
+    setScans(prev => {
+      const exists = prev.find(s => s.name===scan.name && Math.abs(new Date(s.scannedAt)-new Date(scan.scannedAt)) < 5000);
+      if (exists) return prev;
+      return [scan, ...prev];
+    });
+  }
+
+  function deleteScan(id) {
+    setScans(prev => prev.filter(s => s.id !== id));
+    if (activeScan?.id === id) setActiveScan(null);
+  }
+
+  return (
+    <>
+      <TweaksPanel>
+        <TweakSection label="Appearance">
+          <TweakRadio id="theme" label="Theme" value={tweaks.theme} options={['dark','light']} onChange={v=>setTweak('theme',v)}/>
+        </TweakSection>
+      </TweaksPanel>
+
+      {activeScan
+        ? <ReportView scan={activeScan} onBack={()=>setActiveScan(null)}/>
+        : <HomeView scans={scans} onOpen={setActiveScan} onDelete={deleteScan} onAdd={addScan}/>
+      }
+
+      <style>{`
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes slideIn { from{transform:translateX(100%)} to{transform:translateX(0)} }
+        @keyframes popIn { from{opacity:0;transform:scale(0.96) translateY(6px)} to{opacity:1;transform:scale(1) translateY(0)} }
+        input::placeholder { color:var(--text-faint); }
+        input:focus { border-color:var(--accent) !important; outline:none; }
+      `}</style>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
