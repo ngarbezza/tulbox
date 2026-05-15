@@ -8,7 +8,466 @@
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    transform:scale(var(--dc-inv-zoom,1));transform-origin:bottom right;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
+    color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+
+  .twk-field{appearance:none;width:100%;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+  select.twk-field{padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center}
+
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
+    overflow-wrap:anywhere}
+
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+
+  .twk-num{display:flex;align-items:center;height:26px;padding:0 0 0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;background:rgba(255,255,255,.6)}
+  .twk-num-lbl{font-weight:500;color:rgba(41,38,27,.6);cursor:ew-resize;
+    user-select:none;padding-right:8px}
+  .twk-num input{flex:1;min-width:0;height:100%;border:0;background:transparent;
+    font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:0 8px 0 0;
+    outline:none;color:inherit;-moz-appearance:textfield}
+  .twk-num input::-webkit-inner-spin-button,.twk-num input::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0}
+  .twk-num-unit{padding-right:8px;color:rgba(41,38,27,.45)}
+
+  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
+    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
+  .twk-btn:hover{background:rgba(0,0,0,.88)}
+  .twk-btn.secondary{background:rgba(0,0,0,.06);color:inherit}
+  .twk-btn.secondary:hover{background:rgba(0,0,0,.1)}
+
+  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+    background:transparent;flex-shrink:0}
+  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+  .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
+
+  .twk-chips{display:flex;gap:6px}
+  .twk-chip{position:relative;appearance:none;flex:1;min-width:0;height:46px;
+    padding:0;border:0;border-radius:6px;overflow:hidden;cursor:default;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.06);
+    transition:transform .12s cubic-bezier(.3,.7,.4,1),box-shadow .12s}
+  .twk-chip:hover{transform:translateY(-1px);
+    box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 4px 10px rgba(0,0,0,.12)}
+  .twk-chip[data-on="1"]{box-shadow:0 0 0 1.5px rgba(0,0,0,.85),
+    0 2px 6px rgba(0,0,0,.15)}
+  .twk-chip>span{position:absolute;top:0;bottom:0;right:0;width:34%;
+    display:flex;flex-direction:column;box-shadow:-1px 0 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i{flex:1;box-shadow:0 -1px 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i:first-child{box-shadow:none}
+  .twk-chip svg{position:absolute;top:6px;left:6px;width:13px;height:13px;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+`;
+
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+    window.dispatchEvent(new CustomEvent('tweakchange', { detail: edits }));
+  }, []);
+  return [values, setTweak];
+}
+
+function TweaksPanel({ title = 'Tweaks', noDeckControls = false, children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  const hasDeckStage = React.useMemo(
+    () => typeof document !== 'undefined' && !!document.querySelector('deck-stage'),
+    [],
+  );
+  const [railVisible, setRailVisible] = React.useState(() => {
+    try { return localStorage.getItem('deck-stage.railVisible') !== '0'; } catch (e) { return true; }
+  });
+  const toggleRail = (on) => {
+    setRailVisible(on);
+    window.postMessage({ type: '__deck_rail_visible', on }, '*');
+  };
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    clampToViewport();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', clampToViewport);
+      return () => window.removeEventListener('resize', clampToViewport);
+    }
+    const ro = new ResizeObserver(clampToViewport);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  }, [open, clampToViewport]);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = {
+        x: startRight - (ev.clientX - sx),
+        y: startBottom - (ev.clientY - sy),
+      };
+      clampToViewport();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel" data-noncommentable=""
+           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" aria-label="Close tweaks"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">
+          {hasDeckStage && !noDeckControls && (
+            <TweakSection label="Deck">
+              <TweakToggle label="Thumbnail rail" value={railVisible} onChange={toggleRail} />
+            </TweakSection>
+          )}
+          {children}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function TweakSection({ label, children }) {
+  return (
+    <>
+      <div className="twk-sect">{label}</div>
+      {children}
+    </>
+  );
+}
+
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+
+  const labelLen = (o) => String(typeof o === 'object' ? o.label : o).length;
+  const maxLen = options.reduce((m, o) => Math.max(m, labelLen(o)), 0);
+  const fitsAsSegments = maxLen <= ({ 2: 16, 3: 10 }[options.length] ?? 0);
+  if (!fitsAsSegments) {
+    const resolve = (s) => {
+      const m = options.find((o) => String(typeof o === 'object' ? o.value : o) === s);
+      return m === undefined ? s : typeof m === 'object' ? m.value : m;
+    };
+    return <TweakSelect label={label} value={value} options={options}
+                        onChange={(s) => onChange(resolve(s))} />;
+  }
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                      width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => {
+          const v = typeof o === 'object' ? o.value : o;
+          const l = typeof o === 'object' ? o.label : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+    </TweakRow>
+  );
+}
+
+function TweakText({ label, value, placeholder, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <input className="twk-field" type="text" value={value} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value)} />
+    </TweakRow>
+  );
+}
+
+function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) {
+  const clamp = (n) => {
+    if (min != null && n < min) return min;
+    if (max != null && n > max) return max;
+    return n;
+  };
+  const startRef = React.useRef({ x: 0, val: 0 });
+  const onScrubStart = (e) => {
+    e.preventDefault();
+    startRef.current = { x: e.clientX, val: value };
+    const decimals = (String(step).split('.')[1] || '').length;
+    const move = (ev) => {
+      const dx = ev.clientX - startRef.current.x;
+      const raw = startRef.current.val + dx * step;
+      const snapped = Math.round(raw / step) * step;
+      onChange(clamp(Number(snapped.toFixed(decimals))));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div className="twk-num">
+      <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
+      <input type="number" value={value} min={min} max={max} step={step}
+             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
+      {unit && <span className="twk-num-unit">{unit}</span>}
+    </div>
+  );
+}
+
+function __twkIsLight(hex) {
+  const h = String(hex).replace('#', '');
+  const x = h.length === 3 ? h.replace(/./g, (c) => c + c) : h.padEnd(6, '0');
+  const n = parseInt(x.slice(0, 6), 16);
+  if (Number.isNaN(n)) return true;
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return r * 299 + g * 587 + b * 114 > 148000;
+}
+
+const __TwkCheck = ({ light }) => (
+  <svg viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M3 7.2 5.8 10 11 4.2" fill="none" strokeWidth="2.2"
+          strokeLinecap="round" strokeLinejoin="round"
+          stroke={light ? 'rgba(0,0,0,.78)' : '#fff'} />
+  </svg>
+);
+
+function TweakColor({ label, value, options, onChange }) {
+  if (!options || !options.length) {
+    return (
+      <div className="twk-row twk-row-h">
+        <div className="twk-lbl"><span>{label}</span></div>
+        <input type="color" className="twk-swatch" value={value}
+               onChange={(e) => onChange(e.target.value)} />
+      </div>
+    );
+  }
+  const key = (o) => String(JSON.stringify(o)).toLowerCase();
+  const cur = key(value);
+  return (
+    <TweakRow label={label}>
+      <div className="twk-chips" role="radiogroup">
+        {options.map((o, i) => {
+          const colors = Array.isArray(o) ? o : [o];
+          const [hero, ...rest] = colors;
+          const sup = rest.slice(0, 4);
+          const on = key(o) === cur;
+          return (
+            <button key={i} type="button" className="twk-chip" role="radio"
+                    aria-checked={on} data-on={on ? '1' : '0'}
+                    aria-label={colors.join(', ')} title={colors.join(' · ')}
+                    style={{ background: hero }}
+                    onClick={() => onChange(o)}>
+              {sup.length > 0 && (
+                <span>
+                  {sup.map((c, j) => <i key={j} style={{ background: c }} />)}
+                </span>
+              )}
+              {on && <__TwkCheck light={__twkIsLight(hero)} />}
+            </button>
+          );
+        })}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakButton({ label, onClick, secondary = false }) {
+  return (
+    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
+            onClick={onClick}>{label}</button>
+  );
+}
+
+Object.assign(window, {
+  useTweaks, TweaksPanel, TweakSection, TweakRow,
+  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
+  TweakText, TweakNumber, TweakColor, TweakButton,
+});
+</script>
 
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -49,36 +508,57 @@
 <script type="text/babel">
 const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
-// ─── Seed scan (the attached result.json) ────────────────────────────────────
-const SEED_MATCHES = [
-  { id:"GHSA-j288-q9x7-2f5v", severity:"Medium", cvss:6.5, risk:0.0207, pkg:"commons-lang3", version:"3.17.0", fix:"3.18.0", cve:"CVE-2025-48924", epss:0.00036, epssP:10.46, description:"Apache Commons Lang is vulnerable to Uncontrolled Recursion when processing long inputs", detail:"The methods ClassUtils.getClass(...) can throw StackOverflowError on very long inputs.", cwe:"CWE-674", source:"https://github.com/advisories/GHSA-j288-q9x7-2f5v" },
-  { id:"GHSA-72hv-8253-57qq", severity:"Medium", cvss:6.9, risk:0, pkg:"jackson-core", version:"2.19.2", fix:"2.21.1", cve:null, epss:null, epssP:null, description:"jackson-core: Number Length Constraint Bypass in Async Parser Leads to Potential DoS", detail:"In versions prior to 2.21.1, the async parser does not enforce number length constraints correctly.", cwe:null, source:"https://github.com/advisories/GHSA-72hv-8253-57qq" },
-  { id:"GHSA-qqpg-mvqg-649v", severity:"Low", cvss:1.8, risk:0.00288, pkg:"logback-core", version:"1.5.20", fix:"1.5.25", cve:"CVE-2026-1225", epss:0.00012, epssP:1.77, description:"Logback allows an attacker to instantiate classes already present on the class path", detail:"ACE vulnerability in configuration file processing by logback-core up to 1.5.24.", cwe:"CWE-20", source:"https://github.com/advisories/GHSA-qqpg-mvqg-649v" },
-  { id:"GHSA-84h7-rjj3-6jx4", severity:"Medium", cvss:6.5, risk:0.01725, pkg:"netty-codec-http", version:"4.1.128.Final", fix:"4.1.129.Final", cve:"CVE-2025-67735", epss:0.0003, epssP:8.62, description:"Netty has a CRLF Injection vulnerability in HttpRequestEncoder", detail:"CRLF injection with the request URI when constructing a request leads to request smuggling.", cwe:"CWE-93", source:"https://github.com/advisories/GHSA-84h7-rjj3-6jx4" },
-  { id:"GHSA-pwqr-wmgm-9rr8", severity:"High", cvss:7.5, risk:0.01125, pkg:"netty-codec-http", version:"4.1.128.Final", fix:"4.1.132.Final", cve:"CVE-2026-33870", epss:0.00015, epssP:3.08, description:"Netty: HTTP Request Smuggling via Chunked Extension Quoted-String Parsing", detail:"Netty incorrectly parses quoted strings in chunked transfer encoding, enabling request smuggling.", cwe:"CWE-444", source:"https://github.com/advisories/GHSA-pwqr-wmgm-9rr8" },
-  { id:"GHSA-w9fj-cfpg-grvv", severity:"High", cvss:7.5, risk:0.02997, pkg:"netty-codec-http2", version:"4.1.128.Final", fix:"4.1.132.Final", cve:"CVE-2026-33871", epss:0.00037, epssP:10.69, description:"Netty HTTP/2 CONTINUATION Frame Flood DoS via Zero-Byte Frame Bypass", detail:"HTTP/2 CONTINUATION frame flood attacks using zero-byte frames can lead to denial of service.", cwe:"CWE-770", source:"https://github.com/advisories/GHSA-w9fj-cfpg-grvv" },
-  { id:"GHSA-v3gw-h79x-4prj", severity:"Medium", cvss:6.5, risk:0.05014, pkg:"spring-security-core", version:"6.5.6", fix:"6.5.7", cve:"CVE-2026-22233", epss:0.00115, epssP:29.2, description:"Spring Security Authorization Bypass", detail:"Spring Security is vulnerable to authorization bypass in certain method-level security configurations.", cwe:"CWE-863", source:"https://github.com/advisories/GHSA-v3gw-h79x-4prj" },
-  { id:"GHSA-9prh-257m-8n2c", severity:"Medium", cvss:5.3, risk:0.02576, pkg:"spring-security-core", version:"6.5.6", fix:"6.5.7", cve:"CVE-2026-22234", epss:0.00092, epssP:25.7, description:"Spring Security Remote Code Execution via SpEL", detail:"User-controlled data passed into Spring Security expressions without proper sanitization.", cwe:"CWE-917", source:"https://github.com/advisories/GHSA-9prh-257m-8n2c" },
-  { id:"GHSA-3r75-p2h7-m62g", severity:"High", cvss:7.5, risk:0.0375, pkg:"spring-security-web", version:"6.5.6", fix:"6.5.7", cve:"CVE-2026-22236", epss:0.00092, epssP:25.7, description:"Spring Security CSRF bypass via header manipulation", detail:"Spring Security CSRF protection can be bypassed via custom header manipulation.", cwe:"CWE-352", source:"https://github.com/advisories/GHSA-3r75-p2h7-m62g" },
-  { id:"GHSA-6hcq-hmm3-jj3c-wf", severity:"Low", cvss:2.6, risk:0.02576, pkg:"spring-webflux", version:"6.2.12", fix:"6.2.17", cve:"CVE-2026-22735", epss:0.00092, epssP:25.66, description:"Spring WebFlux Server Sent Event stream corruption", detail:"Spring WebFlux applications are vulnerable to stream corruption when using SSE.", cwe:"CWE-667", source:"https://github.com/advisories/GHSA-6hcq-hmm3-jj3c" },
-  { id:"GHSA-4773-3jfm-qmx3-wf", severity:"Medium", cvss:5.9, risk:0.05014, pkg:"spring-webflux", version:"6.2.12", fix:"6.2.17", cve:"CVE-2026-22737", epss:0.00092, epssP:25.57, description:"Spring Framework Improper Path Limitation with Script View Templates (WebFlux)", detail:"Script template views in Spring WebFlux can disclose files outside configured locations.", cwe:"CWE-22", source:"https://github.com/advisories/GHSA-4773-3jfm-qmx3" },
-  { id:"GHSA-6hcq-hmm3-jj3c", severity:"Low", cvss:2.6, risk:0.02576, pkg:"spring-webmvc", version:"6.2.12", fix:"6.2.17", cve:"CVE-2026-22735", epss:0.00092, epssP:25.66, description:"Spring MVC Server Sent Event stream corruption", detail:"Spring MVC applications are vulnerable to stream corruption when using SSE.", cwe:"CWE-667", source:"https://github.com/advisories/GHSA-6hcq-hmm3-jj3c" },
-  { id:"GHSA-4773-3jfm-qmx3", severity:"Medium", cvss:5.9, risk:0.05014, pkg:"spring-webmvc", version:"6.2.12", fix:"6.2.17", cve:"CVE-2026-22737", epss:0.00092, epssP:25.57, description:"Spring Framework Improper Path Limitation with Script View Templates (MVC)", detail:"Script template views in Spring MVC can disclose files outside configured locations.", cwe:"CWE-22", source:"https://github.com/advisories/GHSA-4773-3jfm-qmx3" },
-  { id:"GHSA-24j9-x2wg-9qv6", severity:"Medium", cvss:6.5, risk:0.09142, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.54", cve:"CVE-2026-34500", epss:0.00159, epssP:36.3, description:"Apache Tomcat: CLIENT_CERT authentication does not fail as expected", detail:"CLIENT_CERT authentication bypass when soft fail is disabled and FFM is used.", cwe:"CWE-287", source:"https://github.com/advisories/GHSA-24j9-x2wg-9qv6" },
-  { id:"GHSA-95jq-rwvf-vjx4", severity:"Critical", cvss:9.1, risk:0.031675, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.53", cve:"CVE-2026-29145", epss:0.00035, epssP:10.04, description:"Apache Tomcat: CLIENT_CERT authentication bypass (Critical)", detail:"Authentication bypass in Apache Tomcat CLIENT_CERT allows unauthenticated access.", cwe:"CWE-287", source:"https://github.com/advisories/GHSA-95jq-rwvf-vjx4" },
-  { id:"GHSA-9m3c-qcxr-9x87", severity:"Medium", cvss:6.1, risk:0.020125, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.53", cve:"CVE-2026-25854", epss:0.00035, epssP:10.39, description:"Apache Tomcat has an Open Redirect vulnerability", detail:"Open redirect via LoadBalancerDrainingValve in Apache Tomcat.", cwe:"CWE-601", source:"https://github.com/advisories/GHSA-9m3c-qcxr-9x87" },
-  { id:"GHSA-fpj8-gq4v-p354", severity:"Critical", cvss:9.1, risk:0.032385, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.50", cve:"CVE-2025-66614", epss:0.00051, epssP:15.74, description:"Apache Tomcat - Client certificate verification bypass", detail:"Remote unauthenticated attackers can bypass certificate-based authentication.", cwe:"CWE-295", source:"https://github.com/advisories/GHSA-fpj8-gq4v-p354" },
-  { id:"GHSA-mgp5-rv84-w37q", severity:"High", cvss:7.5, risk:0.0705, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.52", cve:"CVE-2026-24734", epss:0.00094, epssP:25.89, description:"Apache Tomcat Improper Input Validation", detail:"Improper input validation allows attackers to manipulate server state.", cwe:"CWE-20", source:"https://github.com/advisories/GHSA-mgp5-rv84-w37q" },
-  { id:"GHSA-qq5r-98hh-rxc9", severity:"Low", cvss:3.7, risk:0.045315, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.50", cve:"CVE-2026-24733", epss:0.00159, epssP:36.33, description:"Apache Tomcat - Security constraint bypass with HTTP/0.9", detail:"Security constraint bypass using HTTP/0.9 protocol requests.", cwe:"CWE-20", source:"https://github.com/advisories/GHSA-qq5r-98hh-rxc9" },
-  { id:"GHSA-rgh5-2p79-4x4r", severity:"High", cvss:7.5, risk:0.07, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.52", cve:"CVE-2026-24732", epss:0.00094, epssP:25.5, description:"Apache Tomcat partial PUT allows remote code execution", detail:"Partial PUT vulnerability allows unauthenticated remote code execution.", cwe:"CWE-94", source:"https://github.com/advisories/GHSA-rgh5-2p79-4x4r" },
-  { id:"GHSA-v2w3-8r2w-7xhv", severity:"Critical", cvss:9.8, risk:0.098, pkg:"tomcat-embed-core", version:"10.1.48", fix:"10.1.52", cve:"CVE-2026-24731", epss:0.00201, epssP:42.1, description:"Apache Tomcat: Remote Code Execution via deserialization", detail:"Deserialization vulnerability allows remote unauthenticated code execution.", cwe:"CWE-502", source:"https://github.com/advisories/GHSA-v2w3-8r2w-7xhv" },
-];
+// ─── Demo seeds (completely fictional, illustrative of all UI features) ──────
+const SEED_SCAN_1 = {
+  id: 'seed-1',
+  name: '[DEMO] acme-payments-2.4.1.jar',
+  scannedAt: '2024-11-12T09:15:00-03:00',
+  matches: [
+    { id:"GHSA-f3r4-cx21-9q7p", severity:"Critical", cvss:9.8, risk:0.095, pkg:"acme-crypto-core", version:"1.2.3", fix:"1.2.5", cve:"CVE-2024-51234", epss:0.00201, epssP:44.2, description:"acme-crypto-core: Padding Oracle Attack in AES-CBC decryption", detail:"The AES-CBC decryption routine leaks timing information enabling padding oracle attacks.", cwe:"CWE-208", source:"https://github.com/advisories/GHSA-f3r4-cx21-9q7p" },
+    { id:"GHSA-7x9w-2mr3-k8qn", severity:"Critical", cvss:9.1, risk:0.082, pkg:"acme-crypto-core", version:"1.2.3", fix:"1.2.4", cve:"CVE-2024-49871", epss:0.00189, epssP:41.5, description:"acme-crypto-core: Remote Code Execution via malformed key import", detail:"A crafted public key triggers a heap overflow during import, allowing remote code execution.", cwe:"CWE-122", source:"https://github.com/advisories/GHSA-7x9w-2mr3-k8qn" },
+    { id:"GHSA-p5qr-8m3v-xj4h", severity:"High", cvss:8.1, risk:0.064, pkg:"widget-http-client", version:"3.0.0", fix:"3.0.2", cve:"CVE-2025-10023", epss:0.00142, epssP:33.1, description:"widget-http-client: SSRF via unrestricted redirect following", detail:"The HTTP client follows redirects to internal addresses without restriction, enabling SSRF.", cwe:"CWE-918", source:"https://github.com/advisories/GHSA-p5qr-8m3v-xj4h" },
+    { id:"GHSA-m2n4-7vwq-r9xp", severity:"High", cvss:7.8, risk:0.059, pkg:"widget-http-client", version:"3.0.0", fix:"3.1.0", cve:"CVE-2025-10024", epss:0.00098, epssP:27.3, description:"widget-http-client: Credential leak via malformed 401 response", detail:"Credentials are sent in clear text when the server responds with a malformed WWW-Authenticate header.", cwe:"CWE-522", source:"https://github.com/advisories/GHSA-m2n4-7vwq-r9xp" },
+    { id:"GHSA-k8q3-5nj7-wp2x", severity:"High", cvss:7.5, risk:0.055, pkg:"frobnicator-codec", version:"2.1.0", fix:"2.1.3", cve:"CVE-2025-30012", epss:0.00112, epssP:30.4, description:"frobnicator-codec: Denial of Service via deeply nested input", detail:"Processing deeply nested structures causes unbounded recursion, crashing the JVM.", cwe:"CWE-674", source:"https://github.com/advisories/GHSA-k8q3-5nj7-wp2x" },
+    { id:"GHSA-9rp2-4mx5-j8n6", severity:"High", cvss:7.2, risk:0.048, pkg:"frobnicator-codec", version:"2.1.0", fix:"2.2.0", cve:"CVE-2025-30013", epss:0.00087, epssP:23.9, description:"frobnicator-codec: Integer overflow in length field parsing", detail:"An integer overflow in the binary format length field allows out-of-bounds writes.", cwe:"CWE-190", source:"https://github.com/advisories/GHSA-9rp2-4mx5-j8n6" },
+    { id:"GHSA-v8h3-qx7j-2fcp", severity:"High", cvss:7.0, risk:0.042, pkg:"blorbinate-io", version:"0.8.1", fix:"0.8.4", cve:"CVE-2025-41100", epss:0.00076, epssP:20.1, description:"blorbinate-io: Path traversal in archive extraction", detail:"The archive extraction utility does not sanitize entry names, enabling path traversal.", cwe:"CWE-22", source:"https://github.com/advisories/GHSA-v8h3-qx7j-2fcp" },
+    { id:"GHSA-3c5t-n8x6-p7qm", severity:"Medium", cvss:6.5, risk:0.023, pkg:"blorbinate-io", version:"0.8.1", fix:"0.8.3", cve:"CVE-2025-41099", epss:0.00043, epssP:12.7, description:"blorbinate-io: Symlink following during extraction", detail:"Symbolic links inside archives are resolved without validation, potentially overwriting host files.", cwe:"CWE-59", source:"https://github.com/advisories/GHSA-3c5t-n8x6-p7qm" },
+    { id:"GHSA-6j4p-2qr8-txn5", severity:"Medium", cvss:5.5, risk:0.018, pkg:"acme-crypto-core", version:"1.2.3", fix:"1.2.5", cve:"CVE-2024-51235", epss:0.00034, epssP:9.8, description:"acme-crypto-core: Weak default entropy source on initialization", detail:"The default PRNG seed uses insufficient entropy, weakening generated keys.", cwe:"CWE-330", source:"https://github.com/advisories/GHSA-6j4p-2qr8-txn5" },
+    { id:"GHSA-2w5v-8q9m-r4xj", severity:"Low", cvss:3.1, risk:0.007, pkg:"widget-http-client", version:"3.0.0", fix:"3.0.2", cve:"CVE-2025-10025", epss:0.00011, epssP:2.3, description:"widget-http-client: User-Agent header leaks library version", detail:"The default User-Agent header exposes the library name and version to remote servers.", cwe:"CWE-200", source:"https://github.com/advisories/GHSA-2w5v-8q9m-r4xj" },
+  ],
+};
 
-const SEED_SCAN = {
-  id: 'seed',
-  name: 'becom-catalog-1.20.0.jar',
-  scannedAt: '2026-05-05T15:27:26-03:00',
-  matches: SEED_MATCHES,
+const SEED_SCAN_2 = {
+  id: 'seed-2',
+  name: '[DEMO] petstore-api-1.0.0.jar',
+  scannedAt: '2025-02-28T14:42:00-03:00',
+  matches: [
+    { id:"GHSA-q7r4-5nmx-2jkp", severity:"Critical", cvss:9.9, risk:0.092, pkg:"zorbax-auth-lib", version:"4.3.1", fix:"4.3.3", cve:"CVE-2025-20001", epss:0.00215, epssP:46.1, description:"zorbax-auth-lib: JWT signature bypass via algorithm confusion", detail:"Accepts 'none' algorithm in JWT tokens when validation is misconfigured, allowing auth bypass.", cwe:"CWE-347", source:"https://github.com/advisories/GHSA-q7r4-5nmx-2jkp" },
+    { id:"GHSA-h5n3-8v4q-xr9k", severity:"Critical", cvss:9.3, risk:0.078, pkg:"snazzle-xml-parser", version:"1.4.0", fix:"1.4.2", cve:"CVE-2025-31415", epss:0.00177, epssP:38.9, description:"snazzle-xml-parser: XXE injection via external entity expansion", detail:"The XML parser expands external entities by default, enabling XXE attacks.", cwe:"CWE-611", source:"https://github.com/advisories/GHSA-h5n3-8v4q-xr9k" },
+    { id:"GHSA-n2p7-6qr5-wmx8", severity:"High", cvss:8.3, risk:0.066, pkg:"gizmo-web-framework", version:"2.0.5", fix:"2.0.7", cve:"CVE-2025-55001", epss:0.00131, epssP:31.2, description:"gizmo-web-framework: Reflected XSS in error page template", detail:"User input is rendered unescaped in default error pages, enabling reflected XSS.", cwe:"CWE-79", source:"https://github.com/advisories/GHSA-n2p7-6qr5-wmx8" },
+    { id:"GHSA-x4m8-3fq2-j9np", severity:"High", cvss:7.7, risk:0.058, pkg:"gizmo-web-framework", version:"2.0.5", fix:"2.1.0", cve:null, epss:null, epssP:null, description:"gizmo-web-framework: Session fixation via crafted cookie", detail:"The session ID is not rotated after login, enabling session fixation attacks.", cwe:"CWE-384", source:"https://github.com/advisories/GHSA-x4m8-3fq2-j9np" },
+    { id:"GHSA-r3p6-4wv9-q8nx", severity:"High", cvss:7.3, risk:0.051, pkg:"blorb-serializer", version:"5.2.0", fix:"5.2.1", cve:"CVE-2025-60234", epss:0.00094, epssP:26.0, description:"blorb-serializer: Deserialization of untrusted data", detail:"Deserializing attacker-controlled byte streams can lead to arbitrary code execution.", cwe:"CWE-502", source:"https://github.com/advisories/GHSA-r3p6-4wv9-q8nx" },
+    { id:"GHSA-5k7q-9xm3-2rvw", severity:"Medium", cvss:6.3, risk:0.029, pkg:"zorbax-auth-lib", version:"4.3.1", fix:"4.3.2", cve:"CVE-2025-20002", epss:0.00051, epssP:14.8, description:"zorbax-auth-lib: Missing rate limiting enables brute-force attacks", detail:"No rate limiting on the token verification endpoint allows brute-force attacks.", cwe:null, source:"https://github.com/advisories/GHSA-5k7q-9xm3-2rvw" },
+    { id:"GHSA-8v2r-6p4w-n3qx", severity:"Medium", cvss:6.1, risk:0.024, pkg:"snazzle-xml-parser", version:"1.4.0", fix:"1.4.1", cve:null, epss:0.00038, epssP:11.2, description:"snazzle-xml-parser: Billion laughs DoS via recursive entity expansion", detail:"Recursive entity expansion causes exponential memory growth, crashing the process.", cwe:"CWE-776", source:"https://github.com/advisories/GHSA-8v2r-6p4w-n3qx" },
+    { id:"GHSA-j9n5-4r8q-2mvw", severity:"Medium", cvss:5.8, risk:0.021, pkg:"gizmo-web-framework", version:"2.0.5", fix:"2.0.7", cve:"CVE-2025-55002", epss:null, epssP:null, description:"gizmo-web-framework: Open redirect via unvalidated URL parameter", detail:"The redirect URL parameter is not validated, allowing navigation to external malicious sites.", cwe:"CWE-601", source:"https://github.com/advisories/GHSA-j9n5-4r8q-2mvw" },
+    { id:"GHSA-w5p8-7qm4-3nvx", severity:"Medium", cvss:5.3, risk:0.018, pkg:"blorb-serializer", version:"5.2.0", fix:"5.2.1", cve:"CVE-2025-60235", epss:0.00027, epssP:7.5, description:"blorb-serializer: Stack overflow on circular object reference", detail:"Circular object references cause a StackOverflowError during serialization.", cwe:"CWE-674", source:"https://github.com/advisories/GHSA-w5p8-7qm4-3nvx" },
+    { id:"GHSA-4fq7-2xp9-r8mv", severity:"Low", cvss:3.5, risk:0.009, pkg:"zorbax-auth-lib", version:"4.3.1", fix:"4.4.0", cve:"CVE-2025-20003", epss:0.00014, epssP:3.6, description:"zorbax-auth-lib: Verbose errors expose internal stack traces", detail:"Authentication failure responses include full stack traces that aid attackers.", cwe:"CWE-209", source:"https://github.com/advisories/GHSA-4fq7-2xp9-r8mv" },
+    { id:"GHSA-7n3c-5qp8-r2xv", severity:"Low", cvss:2.9, risk:0.006, pkg:"gizmo-web-framework", version:"2.0.5", fix:"2.0.6", cve:null, epss:null, epssP:null, description:"gizmo-web-framework: Missing Secure flag on session cookie", detail:"Session cookies are set without the Secure flag, allowing transmission over HTTP.", cwe:"CWE-614", source:"https://github.com/advisories/GHSA-7n3c-5qp8-r2xv" },
+    { id:"GHSA-2qr9-4mx8-p7nw", severity:"Low", cvss:2.6, risk:0.005, pkg:"snazzle-xml-parser", version:"1.4.0", fix:"1.4.2", cve:"CVE-2025-31416", epss:0.00009, epssP:1.8, description:"snazzle-xml-parser: Namespace prefix collision causes incorrect parsing", detail:"Conflicting namespace prefixes in certain documents produce incorrect parse results.", cwe:null, source:"https://github.com/advisories/GHSA-2qr9-4mx8-p7nw" },
+  ],
+};
+
+const SEED_SCAN_3 = {
+  id: 'seed-3',
+  name: '[DEMO] internal-tools-0.9.2.jar',
+  scannedAt: '2025-04-01T11:00:00-03:00',
+  matches: [
+    { id:"GHSA-3m7v-2q8p-r4xn", severity:"Medium", cvss:5.0, risk:0.015, pkg:"flibble-utils", version:"0.4.2", fix:"0.4.3", cve:"CVE-2024-77001", epss:0.00022, epssP:6.1, description:"flibble-utils: Temporary files created with world-readable permissions", detail:"Temporary files are created with 0644 permissions, exposing potentially sensitive content.", cwe:"CWE-732", source:"https://github.com/advisories/GHSA-3m7v-2q8p-r4xn" },
+    { id:"GHSA-8r5p-4nxm-3jqw", severity:"Low", cvss:3.3, risk:0.008, pkg:"flibble-utils", version:"0.4.2", fix:"0.5.0", cve:"CVE-2024-77002", epss:0.00013, epssP:3.2, description:"flibble-utils: Race condition in cache invalidation", detail:"A race condition in cache invalidation can return stale data under concurrent load.", cwe:"CWE-362", source:"https://github.com/advisories/GHSA-8r5p-4nxm-3jqw" },
+    { id:"GHSA-q9x4-7p2r-5nvw", severity:"Low", cvss:3.1, risk:0.007, pkg:"quux-logger", version:"1.1.0", fix:"1.1.2", cve:"CVE-2024-82345", epss:0.00011, epssP:2.8, description:"quux-logger: Log injection via unsanitized user input", detail:"User-controlled strings written to logs without escaping allow log injection.", cwe:"CWE-117", source:"https://github.com/advisories/GHSA-q9x4-7p2r-5nvw" },
+    { id:"GHSA-5xp3-9mr7-4qwv", severity:"Low", cvss:2.8, risk:0.005, pkg:"quux-logger", version:"1.1.0", fix:"1.1.1", cve:null, epss:0.00008, epssP:1.9, description:"quux-logger: Sensitive data logged at DEBUG level", detail:"Internal authentication tokens may be written to DEBUG-level logs.", cwe:"CWE-312", source:"https://github.com/advisories/GHSA-5xp3-9mr7-4qwv" },
+    { id:"GHSA-2n8r-6pq4-5mxw", severity:"Low", cvss:2.5, risk:0.004, pkg:"flibble-utils", version:"0.4.2", fix:"0.4.4", cve:"CVE-2024-77003", epss:null, epssP:null, description:"flibble-utils: Insecure default config allows directory listing", detail:"The default configuration does not disable directory listing, exposing file structure.", cwe:null, source:"https://github.com/advisories/GHSA-2n8r-6pq4-5mxw" },
+    { id:"GHSA-6r4w-8mv5-3xpn", severity:"Low", cvss:2.1, risk:0.003, pkg:"quux-logger", version:"1.1.0", fix:"1.2.0", cve:"CVE-2024-82346", epss:0.00006, epssP:1.2, description:"quux-logger: Unrestricted log file growth without rotation", detail:"Log files grow without bound when rotation is not explicitly configured.", cwe:"CWE-400", source:"https://github.com/advisories/GHSA-6r4w-8mv5-3xpn" },
+  ],
 };
 
 // ─── JSON parser ─────────────────────────────────────────────────────────────
@@ -690,7 +1170,7 @@ function App() {
       const saved = JSON.parse(localStorage.getItem('beracode_scans') || '[]');
       if (saved.length) return saved;
     } catch(e) {}
-    return [SEED_SCAN];
+    return [SEED_SCAN_1, SEED_SCAN_2, SEED_SCAN_3];
   });
   const [activeScan, setActiveScan] = useState(null);
 
