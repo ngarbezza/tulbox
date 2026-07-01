@@ -511,6 +511,7 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 // ─── Demo seeds (completely fictional, illustrative of all UI features) ──────
 const SEED_SCAN_1 = {
   id: 'seed-1',
+  kind: 'sca',
   name: '[DEMO] acme-payments-2.4.1.jar',
   scannedAt: '2024-11-12T09:15:00-03:00',
   matches: [
@@ -529,6 +530,7 @@ const SEED_SCAN_1 = {
 
 const SEED_SCAN_2 = {
   id: 'seed-2',
+  kind: 'sca',
   name: '[DEMO] petstore-api-1.0.0.jar',
   scannedAt: '2025-02-28T14:42:00-03:00',
   matches: [
@@ -549,6 +551,7 @@ const SEED_SCAN_2 = {
 
 const SEED_SCAN_3 = {
   id: 'seed-3',
+  kind: 'sca',
   name: '[DEMO] internal-tools-0.9.2.jar',
   scannedAt: '2025-04-01T11:00:00-03:00',
   matches: [
@@ -558,6 +561,21 @@ const SEED_SCAN_3 = {
     { id:"GHSA-5xp3-9mr7-4qwv", severity:"Low", cvss:2.8, risk:0.005, pkg:"quux-logger", version:"1.1.0", fix:"1.1.1", cve:null, epss:0.00008, epssP:1.9, description:"quux-logger: Sensitive data logged at DEBUG level", detail:"Internal authentication tokens may be written to DEBUG-level logs.", cwe:"CWE-312", source:"https://github.com/advisories/GHSA-5xp3-9mr7-4qwv" },
     { id:"GHSA-2n8r-6pq4-5mxw", severity:"Low", cvss:2.5, risk:0.004, pkg:"flibble-utils", version:"0.4.2", fix:"0.4.4", cve:"CVE-2024-77003", epss:null, epssP:null, description:"flibble-utils: Insecure default config allows directory listing", detail:"The default configuration does not disable directory listing, exposing file structure.", cwe:null, source:"https://github.com/advisories/GHSA-2n8r-6pq4-5mxw" },
     { id:"GHSA-6r4w-8mv5-3xpn", severity:"Low", cvss:2.1, risk:0.003, pkg:"quux-logger", version:"1.1.0", fix:"1.2.0", cve:"CVE-2024-82346", epss:0.00006, epssP:1.2, description:"quux-logger: Unrestricted log file growth without rotation", detail:"Log files grow without bound when rotation is not explicitly configured.", cwe:"CWE-400", source:"https://github.com/advisories/GHSA-6r4w-8mv5-3xpn" },
+  ],
+};
+
+const SEED_SCAN_SAST_1 = {
+  id: 'seed-sast-1',
+  name: '[DEMO] legacy-billing-service-3.2.0.jar',
+  scannedAt: '2025-05-10T10:00:00-03:00',
+  kind: 'sast',
+  matches: [
+    { id:'2001', severity:'Critical', issueType:'SQL Injection', cwe:'89', exploitLevel:1, description:'<span>Tainted data flows into a SQL query without sanitization, allowing SQL injection.</span> <span>Use parameterized queries or prepared statements.</span>', file:'com/acme/billing/InvoiceDao.java', line:88, functionName:'findByCustomer', qualifiedFunctionName:'com.acme.billing.InvoiceDao.findByCustomer', functionPrototype:'List findByCustomer(String)', stackFrames:[{file:'com/acme/billing/InvoiceDao.java',line:88,functionName:'findByCustomer'},{file:'com/acme/billing/InvoiceController.java',line:41,functionName:'search'}], detailsLink:'https://downloads.veracode.com/securityscan/cwe/v4/java/89.html' },
+    { id:'2002', severity:'High', issueType:'Hardcoded Credentials', cwe:'798', exploitLevel:1, description:'<span>A hardcoded password is used to authenticate against the payment gateway.</span> <span>Store credentials in a secrets manager instead.</span>', file:'com/acme/billing/gateway/PaymentClient.java', line:22, functionName:'connect', qualifiedFunctionName:'com.acme.billing.gateway.PaymentClient.connect', functionPrototype:'Connection connect()', stackFrames:[], detailsLink:'https://downloads.veracode.com/securityscan/cwe/v4/java/798.html' },
+    { id:'2003', severity:'High', issueType:'XML External Entity (XXE)', cwe:'611', exploitLevel:1, description:'<span>The XML parser resolves external entities, enabling XXE attacks on uploaded invoices.</span>', file:'com/acme/billing/InvoiceImporter.java', line:57, functionName:'parse', qualifiedFunctionName:'com.acme.billing.InvoiceImporter.parse', functionPrototype:'Invoice parse(InputStream)', stackFrames:[{file:'com/acme/billing/InvoiceImporter.java',line:57,functionName:'parse'}], detailsLink:'https://downloads.veracode.com/securityscan/cwe/v4/java/611.html' },
+    { id:'2004', severity:'Medium', issueType:'Improper Output Neutralization for Logs', cwe:'117', exploitLevel:1, description:'<span>Untrusted data is written to logs without sanitization, enabling log forging.</span>', file:'com/acme/billing/AuditLogger.java', line:33, functionName:'logAttempt', qualifiedFunctionName:'com.acme.billing.AuditLogger.logAttempt', functionPrototype:'void logAttempt(String)', stackFrames:[], detailsLink:'https://downloads.veracode.com/securityscan/cwe/v4/java/117.html' },
+    { id:'2005', severity:'Medium', issueType:'Insecure Randomness', cwe:'330', exploitLevel:0, description:'<span>A non-cryptographic random generator is used to create invoice tokens.</span>', file:'com/acme/billing/TokenFactory.java', line:14, functionName:'newToken', qualifiedFunctionName:'com.acme.billing.TokenFactory.newToken', functionPrototype:'String newToken()', stackFrames:[], detailsLink:null },
+    { id:'2006', severity:'Low', issueType:'Information Exposure', cwe:null, exploitLevel:0, description:'<span>A verbose error message exposes the internal stack trace to API clients.</span>', file:'com/acme/billing/ApiErrorHandler.java', line:19, functionName:'handle', qualifiedFunctionName:'com.acme.billing.ApiErrorHandler.handle', functionPrototype:'Response handle(Exception)', stackFrames:[], detailsLink:null },
   ],
 };
 
@@ -587,6 +605,44 @@ function parseVeracodeJson(json, filename) {
     const jar = jarPaths[0] ? jarPaths[0].split('/').pop() : (filename || 'unknown');
     return { id: crypto.randomUUID(), name: jar, scannedAt: ts, matches };
   } catch(e) {
+    return null;
+  }
+}
+
+// ─── Static analysis (SAST) parser ────────────────────────────────────────────
+const SAST_SEVERITY_MAP = { 5:'Critical', 4:'High', 3:'Medium', 2:'Low', 1:'Low', 0:'Low' };
+
+function flattenStackFrames(stackDumps) {
+  const dumps = stackDumps?.stack_dump || [];
+  const frames = [];
+  dumps.forEach(d => (d.Frame || []).forEach(f => {
+    frames.push({ file: f.SourceFile, line: f.SourceLine, functionName: f.FunctionName });
+  }));
+  return frames;
+}
+
+function parseVeracodeStaticJson(json, filename) {
+  try {
+    const data = JSON.parse(json);
+    const rawFindings = data?.findings || [];
+    const matches = rawFindings.map(f => ({
+      id: String(f.issue_id),
+      severity: SAST_SEVERITY_MAP[f.severity] ?? 'Low',
+      issueType: f.issue_type || 'Unknown issue',
+      cwe: f.cwe_id || null,
+      exploitLevel: f.exploit_level ?? null,
+      description: f.display_text || '',
+      file: f.files?.source_file?.file || '',
+      line: f.files?.source_file?.line ?? null,
+      functionName: f.files?.source_file?.function_name || '',
+      qualifiedFunctionName: f.files?.source_file?.qualified_function_name || '',
+      functionPrototype: f.files?.source_file?.function_prototype || '',
+      stackFrames: flattenStackFrames(f.stack_dumps),
+      detailsLink: f.flaw_details_link || null,
+    }));
+    const name = (data?.modules && data.modules[0]) || filename || 'unknown';
+    return { id: crypto.randomUUID(), name, scannedAt: new Date().toISOString(), kind: 'sast', matches };
+  } catch (e) {
     return null;
   }
 }
@@ -709,8 +765,14 @@ function DropZone({ onAdd }) {
     jsonFiles.forEach(file => {
       const reader = new FileReader();
       reader.onload = e => {
-        const scan = parseVeracodeJson(e.target.result, file.name);
+        let raw;
+        try { raw = JSON.parse(e.target.result); } catch (err) { raw = null; }
+        const isSast = raw && typeof raw.scan_id === 'string' && Array.isArray(raw.modules);
+        const scan = isSast
+          ? parseVeracodeStaticJson(e.target.result, file.name)
+          : parseVeracodeJson(e.target.result, file.name);
         if (!scan) { setError(`Could not parse ${file.name}`); return; }
+        if (!isSast) scan.kind = 'sca';
         onAdd(scan);
       };
       reader.readAsText(file);
@@ -741,7 +803,7 @@ function DropZone({ onAdd }) {
       <div style={{ fontSize:14, fontWeight:500, color: dragging ? 'var(--accent)' : 'var(--text-muted)' }}>
         {dragging ? 'Release to add scan' : 'Drop result.json here'}
       </div>
-      <div style={{ fontSize:12, color:'var(--text-faint)' }}>or click to browse · JSON from veracode scan --type directory</div>
+      <div style={{ fontSize:12, color:'var(--text-faint)' }}>or click to browse · SCA or static analysis result.json</div>
       {error && <div style={{ fontSize:12, color:'var(--critical)', marginTop:4 }}>{error}</div>}
     </div>
   );
@@ -777,7 +839,12 @@ function ScanCard({ scan, onClick, onDelete, isNew }) {
           <SevDonut summary={s} size={52} />
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontSize:14, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontFamily:'var(--font)' }}>{scan.name}</div>
-            <div style={{ fontSize:11, color:'var(--text-faint)', marginTop:3 }}>{formatDate(scan.scannedAt)}</div>
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:3 }}>
+              <span style={{ fontSize:10, fontWeight:600, letterSpacing:'0.04em', color:'var(--text-faint)', border:'1px solid var(--border)', borderRadius:4, padding:'1px 5px' }}>
+                {scan.kind === 'sast' ? 'SAST' : 'SCA'}
+              </span>
+              <span style={{ fontSize:11, color:'var(--text-faint)' }}>{formatDate(scan.scannedAt)}</span>
+            </div>
             <div style={{ fontSize:11, color:'var(--text-faint)', marginTop:1 }}>{relativeTime(scan.scannedAt)}</div>
           </div>
           {hover && (
@@ -808,7 +875,11 @@ function ScanCard({ scan, onClick, onDelete, isNew }) {
 
         {/* Footer */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <span style={{ fontSize:11, color:'var(--text-faint)' }}>{s.pkgs} package{s.pkgs!==1?'s':''} affected</span>
+          <span style={{ fontSize:11, color:'var(--text-faint)' }}>
+            {scan.kind === 'sast'
+              ? `${new Set(scan.matches.map(v=>v.issueType)).size} issue type${new Set(scan.matches.map(v=>v.issueType)).size!==1?'s':''}`
+              : `${s.pkgs} package${s.pkgs!==1?'s':''} affected`}
+          </span>
           <span style={{ fontSize:12, color:'var(--accent)', fontWeight:500 }}>View report →</span>
         </div>
       </div>
@@ -876,6 +947,81 @@ function DSection({ label, children }) {
 }
 function KV({ label, value }) {
   return <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderBottom:'1px solid var(--border-subtle)' }}><span style={{ fontSize:12, color:'var(--text-muted)' }}>{label}</span><span style={{ fontSize:13 }}>{value}</span></div>;
+}
+function KVStack({ label, value }) {
+  return (
+    <div style={{ padding:'6px 0', borderBottom:'1px solid var(--border-subtle)' }}>
+      <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:3 }}>{label}</div>
+      <div style={{ fontSize:13, wordBreak:'break-all' }}>{value}</div>
+    </div>
+  );
+}
+
+// ─── SAST Detail Drawer ─────────────────────────────────────────────────────────
+function sanitizeVeracodeHtml(html) {
+  const allowed = ['span', 'a', 'br'];
+  return html.replace(/<(\/?)(\w+)([^>]*)>/g, (m, close, tag, attrs) => {
+    if (!allowed.includes(tag.toLowerCase())) return '';
+    if (tag.toLowerCase() === 'a' && !close) {
+      const href = attrs.match(/href="([^"]*)"/);
+      return href ? `<a href="${href[1]}" target="_blank" rel="noopener">` : '<a>';
+    }
+    return `<${close}${tag}>`;
+  });
+}
+
+function SastDetailDrawer({ vuln, onClose }) {
+  useEffect(() => {
+    const h = e => { if(e.key==='Escape') onClose(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose]);
+  if (!vuln) return null;
+  return (
+    <>
+      <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:100, backdropFilter:'blur(2px)', animation:'fadeIn 0.15s' }}/>
+      <div style={{ position:'fixed', right:0, top:0, bottom:0, width:460, background:'var(--surface)', borderLeft:'1px solid var(--border)', zIndex:101, display:'flex', flexDirection:'column', animation:'slideIn 0.2s cubic-bezier(0.16,1,0.3,1)', overflowY:'auto' }}>
+        <div style={{ padding:'20px 24px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'flex-start', gap:12 }}>
+          <div style={{ flex:1 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <SevBadge sev={vuln.severity}/>
+              {vuln.cwe && <span style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font)' }}>CWE-{vuln.cwe}</span>}
+            </div>
+            <div style={{ fontSize:14, fontWeight:600, color:'var(--text)', marginTop:8 }}>{vuln.issueType}</div>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:20, lineHeight:1, padding:'0 4px', borderRadius:4 }}>×</button>
+        </div>
+        <div style={{ padding:'20px 24px', flex:1, display:'flex', flexDirection:'column', gap:20 }}>
+          <div style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, textWrap:'pretty' }}
+               dangerouslySetInnerHTML={{ __html: sanitizeVeracodeHtml(vuln.description) }}/>
+
+          <DSection label="Location">
+            <KVStack label="File" value={<span className="mono" style={{color:'var(--accent)'}}>{vuln.file}:{vuln.line}</span>}/>
+            <KVStack label="Function" value={<span className="mono">{vuln.qualifiedFunctionName || vuln.functionName}</span>}/>
+            {vuln.functionPrototype && <KVStack label="Prototype" value={<span className="mono" style={{fontSize:11}}>{vuln.functionPrototype}</span>}/>}
+          </DSection>
+
+          {vuln.stackFrames.length > 0 && (
+            <DSection label="Data flow">
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {vuln.stackFrames.map((f,i) => (
+                  <div key={i} style={{ fontSize:12, fontFamily:'var(--font)', color:'var(--text-muted)', wordBreak:'break-all' }}>
+                    {f.file}:{f.line} — <span style={{color:'var(--text)'}}>{f.functionName}()</span>
+                  </div>
+                ))}
+              </div>
+            </DSection>
+          )}
+
+          {vuln.detailsLink && (
+            <DSection label="References">
+              <a href={vuln.detailsLink} target="_blank" rel="noopener" style={{ fontSize:12, color:'var(--accent)', fontFamily:'var(--font)', wordBreak:'break-all', textDecoration:'none' }}>CWE-{vuln.cwe} details</a>
+            </DSection>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }
 
 // ─── Report View ──────────────────────────────────────────────────────────────
@@ -1091,6 +1237,178 @@ function ReportView({ scan, onBack }) {
   );
 }
 
+// ─── SAST Report View ──────────────────────────────────────────────────────────
+function SastReportView({ scan, onBack }) {
+  const [sevFilter, setSevFilter]   = useState(null);
+  const [typeFilter, setTypeFilter] = useState(null);
+  const [search, setSearch]         = useState('');
+  const [selected, setSelected]     = useState(null);
+
+  const types = useMemo(() => {
+    const map = {};
+    scan.matches.forEach(v => {
+      if (!map[v.issueType]) map[v.issueType] = [];
+      map[v.issueType].push(v);
+    });
+    return map;
+  }, [scan]);
+
+  const summary = useMemo(() => scanSummary(scan.matches), [scan]);
+
+  const filtered = useMemo(() => {
+    let data = scan.matches;
+    if (sevFilter) data = data.filter(v=>v.severity===sevFilter);
+    if (typeFilter) data = data.filter(v=>v.issueType===typeFilter);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      data = data.filter(v =>
+        v.issueType.toLowerCase().includes(q) ||
+        (v.cwe && v.cwe.toLowerCase().includes(q)) ||
+        v.file.toLowerCase().includes(q) ||
+        v.functionName.toLowerCase().includes(q));
+    }
+    return [...data].sort((a,b) => (SEV_ORDER[a.severity]??9)-(SEV_ORDER[b.severity]??9));
+  }, [scan, sevFilter, typeFilter, search]);
+
+  return (
+    <div style={{ height:'100vh', display:'flex', flexDirection:'column', background:'var(--bg)' }}>
+      <div style={{ borderBottom:'1px solid var(--border)', padding:'0 24px', display:'flex', alignItems:'center', gap:12, height:52, flexShrink:0 }}>
+        <button onClick={onBack} style={{ display:'flex', alignItems:'center', gap:6, background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:13, padding:'4px 8px', borderRadius:6 }}
+          onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
+          <span style={{ fontSize:16 }}>←</span> All scans
+        </button>
+        <div style={{ width:1, height:20, background:'var(--border)' }}/>
+        <Logo/>
+        <div style={{ marginLeft:'auto', textAlign:'right' }}>
+          <div style={{ fontSize:13, fontWeight:600, color:'var(--text)', fontFamily:'var(--font)' }}>{scan.name}</div>
+          <div style={{ fontSize:11, color:'var(--text-faint)' }}>{formatDate(scan.scannedAt)}</div>
+        </div>
+      </div>
+
+      <div style={{ flex:1, display:'grid', gridTemplateColumns:'244px 1fr', overflow:'hidden' }}>
+        <div style={{ borderRight:'1px solid var(--border)', overflowY:'auto', padding:'16px 12px', display:'flex', flexDirection:'column', gap:20 }}>
+          <div style={{ position:'relative' }}>
+            <svg style={{ position:'absolute', left:9, top:'50%', transform:'translateY(-50%)', opacity:0.35 }} width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.4"/><path d="M9 9L11.5 11.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search issue, CWE, file…"
+              style={{ width:'100%', padding:'7px 9px 7px 27px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', fontSize:12, fontFamily:'var(--font-ui)', outline:'none' }}/>
+          </div>
+
+          <div>
+            <div style={{ fontSize:10, fontWeight:600, color:'var(--text-faint)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:8 }}>Severity</div>
+            {['Critical','High','Medium','Low'].map(s => {
+              const count = scan.matches.filter(v=>v.severity===s).length;
+              const active = sevFilter===s;
+              return (
+                <button key={s} onClick={()=>setSevFilter(active?null:s)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'5px 8px', borderRadius:6, border:'none', cursor:'pointer', background:active?sevBg(s):'transparent', textAlign:'left', transition:'background 0.1s', marginBottom:2 }}
+                  onMouseEnter={e=>{if(!active)e.currentTarget.style.background='var(--surface2)'}}
+                  onMouseLeave={e=>{if(!active)e.currentTarget.style.background='transparent'}}>
+                  <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                    <div style={{ width:7, height:7, borderRadius:'50%', background:sevColor(s) }}/>
+                    <span style={{ fontSize:12, color:active?sevColor(s):'var(--text)', fontWeight:active?600:400 }}>{s}</span>
+                  </div>
+                  <span style={{ fontSize:11, color:'var(--text-faint)', fontFamily:'var(--font)' }}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div>
+            <div style={{ fontSize:10, fontWeight:600, color:'var(--text-faint)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:8 }}>Issue type</div>
+            {Object.entries(types).map(([name, vulns]) => {
+              const active = typeFilter===name;
+              const topSev = ['Critical','High','Medium','Low'].find(s=>vulns.some(v=>v.severity===s));
+              return (
+                <button key={name} onClick={()=>setTypeFilter(active?null:name)} style={{ display:'grid', gridTemplateColumns:'1fr auto auto', gap:8, alignItems:'center', padding:'7px 8px', background:active?'var(--surface2)':'transparent', border:`1px solid ${active?'var(--border)':'transparent'}`, borderRadius:6, cursor:'pointer', textAlign:'left', width:'100%', transition:'all 0.1s', marginBottom:2 }}
+                  onMouseEnter={e=>{if(!active)e.currentTarget.style.background='var(--surface2)'}}
+                  onMouseLeave={e=>{if(!active)e.currentTarget.style.background='transparent'}}>
+                  <div style={{ overflow:'hidden' }}>
+                    <div style={{ fontSize:12, fontWeight:500, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+                  </div>
+                  {topSev && <SevBadge sev={topSev} small/>}
+                  <span style={{ fontSize:11, fontFamily:'var(--font)', color:'var(--text-faint)' }}>{vulns.length}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ overflowY:'auto', display:'flex', flexDirection:'column' }}>
+          <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
+            {[
+              { label:'Total', value:summary.total, color:'var(--text)', f:null },
+              { label:'Critical', value:summary.Critical, color:'var(--critical)', f:'Critical' },
+              { label:'High', value:summary.High, color:'var(--high)', f:'High' },
+              { label:'Medium', value:summary.Medium, color:'var(--medium)', f:'Medium' },
+              { label:'Low', value:summary.Low, color:'var(--low)', f:'Low' },
+            ].map(c => {
+              const active = sevFilter===c.f;
+              return (
+                <button key={c.label} onClick={()=>setSevFilter(active?null:c.f)} style={{ background:active?(c.f?sevBg(c.f):'var(--surface2)'):'var(--surface)', border:`1px solid ${active?(c.f?sevColor(c.f)+'55':'var(--accent)'):'var(--border)'}`, borderRadius:8, padding:'12px 16px', cursor:'pointer', textAlign:'left', transition:'all 0.12s' }}>
+                  <div style={{ fontSize:28, fontWeight:700, color:c.color, fontFamily:'var(--font)', lineHeight:1 }}>{c.value}</div>
+                  <div style={{ fontSize:12, fontWeight:600, color:'var(--text)', marginTop:3 }}>{c.label}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          {(sevFilter||typeFilter||search) && (
+            <div style={{ padding:'8px 20px', display:'flex', alignItems:'center', gap:8, borderBottom:'1px solid var(--border-subtle)', flexWrap:'wrap' }}>
+              <span style={{ fontSize:11, color:'var(--text-faint)' }}>Filters:</span>
+              {sevFilter && <Pill label={sevFilter} color={sevColor(sevFilter)} onRemove={()=>setSevFilter(null)}/>}
+              {typeFilter && <Pill label={typeFilter} onRemove={()=>setTypeFilter(null)}/>}
+              {search && <Pill label={`"${search}"`} onRemove={()=>setSearch('')}/>}
+              <button onClick={()=>{setSevFilter(null);setTypeFilter(null);setSearch('');}} style={{ fontSize:11, color:'var(--text-faint)', background:'none', border:'none', cursor:'pointer' }}>Clear all</button>
+              <span style={{ fontSize:11, color:'var(--text-faint)', marginLeft:'auto' }}>{filtered.length} finding{filtered.length!==1?'s':''}</span>
+            </div>
+          )}
+
+          <div style={{ flex:1 }}>
+            {filtered.length===0 ? (
+              <div style={{ padding:60, textAlign:'center', color:'var(--text-faint)' }}>
+                <div style={{ fontSize:28, marginBottom:10 }}>✓</div>
+                <div style={{ fontSize:13 }}>No findings match your filters</div>
+              </div>
+            ) : (
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                <thead>
+                  <tr style={{ borderBottom:'1px solid var(--border)' }}>
+                    {['Severity','Issue','CWE','Location','Exploit'].map(l=>(
+                      <th key={l} style={{ padding:'8px 14px', textAlign:'left', fontSize:10, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-faint)', background:'var(--surface)', position:'sticky', top:0, zIndex:1, borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>{l}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((v,i)=>{
+                    const active = selected && selected.id===v.id;
+                    return (
+                      <tr key={v.id+i} onClick={()=>setSelected(active?null:v)} style={{ cursor:'pointer', background:active?'var(--surface2)':'transparent', borderBottom:'1px solid var(--border-subtle)', transition:'background 0.1s' }}
+                        onMouseEnter={e=>{if(!active)e.currentTarget.style.background='var(--surface2)'}}
+                        onMouseLeave={e=>{if(!active)e.currentTarget.style.background='transparent'}}>
+                        <td style={{ padding:'9px 14px' }}><SevBadge sev={v.severity} small/></td>
+                        <td style={{ padding:'9px 14px', maxWidth:280 }}><div style={{ fontSize:12, color:'var(--text)', lineHeight:1.4, textWrap:'pretty' }}>{v.issueType}</div></td>
+                        <td style={{ padding:'9px 14px' }}><span style={{ fontSize:11, fontFamily:'var(--font)', color:'var(--text-muted)' }}>{v.cwe || '—'}</span></td>
+                        <td style={{ padding:'9px 14px' }}>
+                          <div style={{ fontSize:11, fontFamily:'var(--font)', color:'var(--accent)' }}>{v.file}:{v.line}</div>
+                          <div style={{ fontSize:10, color:'var(--text-faint)', fontFamily:'var(--font)' }}>{v.functionName}()</div>
+                        </td>
+                        <td style={{ padding:'9px 14px' }}><span style={{ fontSize:11, fontFamily:'var(--font)', color:'var(--text-muted)' }}>{v.exploitLevel ?? '—'}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {selected && <SastDetailDrawer vuln={selected} onClose={()=>setSelected(null)}/>}
+    </div>
+  );
+}
+
 function Pill({ label, color, onRemove }) {
   return (
     <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'2px 8px', borderRadius:99, background:'var(--surface2)', border:'1px solid var(--border)', fontSize:11, color:color||'var(--text-muted)' }}>
@@ -1170,7 +1488,7 @@ function App() {
       const saved = JSON.parse(localStorage.getItem('beracode_scans') || '[]');
       if (saved.length) return saved;
     } catch(e) {}
-    return [SEED_SCAN_1, SEED_SCAN_2, SEED_SCAN_3];
+    return [SEED_SCAN_1, SEED_SCAN_2, SEED_SCAN_3, SEED_SCAN_SAST_1];
   });
   const [activeScan, setActiveScan] = useState(null);
 
@@ -1207,7 +1525,9 @@ function App() {
       </TweaksPanel>
 
       {activeScan
-        ? <ReportView scan={activeScan} onBack={()=>setActiveScan(null)}/>
+        ? (activeScan.kind === 'sast'
+            ? <SastReportView scan={activeScan} onBack={()=>setActiveScan(null)}/>
+            : <ReportView scan={activeScan} onBack={()=>setActiveScan(null)}/>)
         : <HomeView scans={scans} onOpen={setActiveScan} onDelete={deleteScan} onAdd={addScan}/>
       }
 
