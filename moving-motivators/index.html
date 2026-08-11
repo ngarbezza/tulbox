@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Moving Motivators</title>
+
+<script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js" integrity="sha384-W/1Fp/LgAYO/oTn9Gs+PbeWuMuq1eQCnUMPCeg8POmMYchhzxctjEqtbiCIxDOON" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/vue-i18n@11.0.1/dist/vue-i18n.global.prod.js" integrity="sha384-oWt+ytMCS57VGjB49cidlxQouraIoxTkeS1BZ1X4IeZvmUMCFQshXqQBXQ1AUvDQ" crossorigin="anonymous"></script>
+
+<style>
+  :root {
+    --font-ui: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  }
+  * { font-family: var(--font-ui); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: #24262a; }
+  body { margin: 0; }
+
+  .moving-motivators-container { padding: 1.5em 1em; }
+  @media only screen and (min-width: 800px) {
+    .moving-motivators-container { padding-left: 10%; padding-right: 10%; }
+  }
+
+  h1 { text-align: center; }
+
+  .locale-changer { margin-top: 1em; text-align: right; }
+
+  .motivators-explanation { text-align: center; }
+
+  .motivators-container { display: flex; flex-direction: row; justify-content: space-evenly; }
+  .motivators-list { order: 1; width: 40%; }
+  .motivator-detail { order: 2; text-align: center; width: 40%; }
+
+  .motivator-stacked { padding: .8em; touch-action: none; }
+  .motivator-stacked.dragging { opacity: .4; }
+  .motivator-name { color: white; font-weight: bolder; text-align: center; text-shadow: 0 0 3px black; }
+  .motivator-stacked:hover { padding: calc(.8em - .15em); border: .15em solid; cursor: grab; }
+
+  .motivator-description { font-size: 1.5em; font-style: italic; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+const motivators = [
+  { id: '00', name: 'motivators.relatedness.name', description: 'motivators.relatedness.description', color: '#1eb26a' },
+  { id: '01', name: 'motivators.acceptance.name', description: 'motivators.acceptance.description', color: '#ece810' },
+  { id: '02', name: 'motivators.curiosity.name', description: 'motivators.curiosity.description', color: '#faaf18' },
+  { id: '03', name: 'motivators.freedom.name', description: 'motivators.freedom.description', color: '#ee3e35' },
+  { id: '04', name: 'motivators.status.name', description: 'motivators.status.description', color: '#f27ca9' },
+  { id: '05', name: 'motivators.goal.name', description: 'motivators.goal.description', color: '#483082' },
+  { id: '06', name: 'motivators.honor.name', description: 'motivators.honor.description', color: '#02bce8' },
+  { id: '07', name: 'motivators.mastery.name', description: 'motivators.mastery.description', color: '#5dc3ad' },
+  { id: '08', name: 'motivators.order.name', description: 'motivators.order.description', color: '#f8c0cf' },
+  { id: '09', name: 'motivators.power.name', description: 'motivators.power.description', color: '#a7af38' },
+];
+
+function shuffle(array) {
+  let currentIndex = array.length;
+  while (currentIndex !== 0) {
+    const randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex -= 1;
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+  }
+  return array;
+}
+
+function getDefaultLanguage() {
+  const browserLanguage = window.navigator.language;
+  if (browserLanguage.includes('-')) {
+    return browserLanguage.split('-')[0];
+  }
+  return browserLanguage;
+}
+
+const translations = {
+  en: {
+    actions: { choose_motivator: 'Choose a motivator', ordering: 'Ordering...' },
+    motivators: {
+      acceptance: { name: 'ACCEPTANCE', description: 'The people around me approve of what I do and who I am' },
+      curiosity: { name: 'CURIOSITY', description: 'I have plenty of things to investigate and to think about' },
+      honor: { name: 'HONOR', description: 'I feel proud that my personal values are reflected in how I work' },
+      mastery: { name: 'MASTERY', description: 'My work challenges my competence but it is still within my abilities' },
+      power: { name: 'POWER', description: "There's enough room for me to influence what happens around me" },
+      freedom: { name: 'FREEDOM', description: 'I am independent of others with my work and my responsibilities' },
+      relatedness: { name: 'RELATEDNESS', description: 'I have good social contacts with the people in my work' },
+      order: { name: 'ORDER', description: 'There are enough rules and policies for a stable environment' },
+      goal: { name: 'GOAL', description: 'My purpose in life is reflected in the work that I do' },
+      status: { name: 'STATUS', description: 'My position is good, and recognized by the people who work with me' },
+    },
+  },
+  es: {
+    actions: { choose_motivator: 'Elige un motivador', ordering: 'Ordenando...' },
+    motivators: {
+      acceptance: { name: 'ACEPTACIÓN', description: 'Las personas a mi alrededor aprueban lo que hago y quién soy' },
+      curiosity: { name: 'CURIOSIDAD', description: 'Tengo muchas cosas para investigar y sobre las cuales pensar' },
+      honor: { name: 'HONRA', description: 'Me siento orgulloso de que mis valores personales se reflejen en cómo trabajo' },
+      mastery: { name: 'MAESTRÍA', description: 'Mi trabajo desafía mis competencias pero aún está dentro de mis capacidades' },
+      power: { name: 'PODER', description: 'Hay suficiente espacio para que yo influencie lo que ocurre a mi alrededor' },
+      freedom: { name: 'LIBERTAD', description: 'Soy independiente de otres con mi propio trabajo y responsabilidades' },
+      relatedness: { name: 'RELACIONES', description: 'Tengo buenas relaciones sociales con la gente de mi trabajo' },
+      order: { name: 'ORDEN', description: 'Hay suficientes reglas y políticas para un entorno estable' },
+      goal: { name: 'META', description: 'Mi propósito en la vida se refleja en el trabajo que hago' },
+      status: { name: 'ESTATUS', description: 'Mi posición es buena y reconocida por la gente que trabaja conmigo' },
+    },
+  },
+  de: {
+    actions: { choose_motivator: 'Wählen Sie einen Motivator', ordering: 'Bestellen...' },
+    motivators: {
+      acceptance: { name: 'AKZEPTANZ', description: 'Die Menschen um mich herum finden gut, was ich tue und wer ich bin' },
+      curiosity: { name: 'NEUGIER', description: 'Ich habe viele Dinge zu untersuchen und darüber nachzudenken' },
+      honor: { name: 'EHRE', description: 'Ich bin stolz darauf, dass sich meine persönlichen Werte in meiner Arbeit widerspiegeln' },
+      mastery: { name: 'BEHERRSCHUNG', description: 'Meine Arbeit ist eine Herausforderung für mich, aber sie liegt noch im Rahmen meiner Fähigkeiten' },
+      power: { name: 'MACHT', description: 'Es gibt genug Raum für mich, um zu beeinflussen, was um mich herum geschieht' },
+      freedom: { name: 'FREIHEIT', description: 'Ich bin unabhängig von anderen bei meiner Arbeit und meinen Aufgaben' },
+      relatedness: { name: 'VERWANDTSCHAFT', description: 'Ich habe gute soziale Kontakte zu den Menschen an meinem Arbeitsplatz' },
+      order: { name: 'ORDNUNG', description: 'Es gibt genügend Regeln und Strategien für ein stabiles Umfeld' },
+      goal: { name: 'ZIEL', description: 'Mein Lebensziel spiegelt sich in der Arbeit wider, die ich tue' },
+      status: { name: 'STELLUNG', description: 'Meine Position ist gut und wird von den Menschen, die mit mir arbeiten, anerkannt.' },
+    },
+  },
+  it: {
+    actions: { choose_motivator: 'Scegli un motivatore', ordering: 'Ordinando...' },
+    motivators: {
+      acceptance: { name: 'ACCETTAZIONE', description: 'Le persone intorno a me approvano ciò che faccio e chi sono' },
+      curiosity: { name: 'CURIOSITÀ', description: 'Ho un sacco di cose da indagare e a cui pensare' },
+      honor: { name: 'ONORE', description: 'Sono orgoglioso che i miei valori personali si riflettano nel modo in cui lavoro' },
+      mastery: { name: 'PADRONANZA', description: 'Il mio lavoro mette alla prova la mia competenza ma è ancora nelle mie capacità' },
+      power: { name: 'POTENZA', description: "C'è abbastanza spazio per me per influenzare ciò che accade intorno a me" },
+      freedom: { name: 'LIBERTÀ', description: 'Sono indipendente dagli altri con il mio lavoro e le mie responsabilità' },
+      relatedness: { name: 'CORRELAZIONE', description: 'Ho buoni contatti sociali con le persone nel mio lavoro' },
+      order: { name: 'ORDINE', description: 'Ci sono abbastanza regole e politiche per un ambiente stabile' },
+      goal: { name: 'OBIETTIVO', description: 'Il mio scopo nella vita si riflette nel lavoro che svolgo' },
+      status: { name: 'STATO', description: 'La mia posizione è buona e riconosciuta dalle persone che lavorano con me' },
+    },
+  },
+  pt: {
+    actions: { choose_motivator: 'Escolha um motivador', ordering: 'Ordenando...' },
+    motivators: {
+      acceptance: { name: 'ACEITAÇÃO', description: 'As pessoas ao meu redor aprovam o que faço e quem sou' },
+      curiosity: { name: 'CURIOSIDADE', description: 'Tenho muitas coisas para investigar e pensar sobre' },
+      honor: { name: 'HONRA', description: 'Me sinto orgulhoso que meus valores pessoais refletem-se em como trabalho' },
+      mastery: { name: 'MAESTRIA', description: 'Meu trabalho desafia minhas competências mas ainda está dentro das minhas capacidades' },
+      power: { name: 'PODER', description: 'Há suficiente espaço para que eu influencie o que ocorre ao meu redor' },
+      freedom: { name: 'LIBERDADE', description: 'Sou independente dos outros com meu próprio trabalho e responsabilidades' },
+      relatedness: { name: 'RELAÇÕES', description: 'Tenho boas relações sociais com as pessoas do meu trabalho' },
+      order: { name: 'ORDEM', description: 'Há suficientes regras e políticas para um ambiente estável' },
+      goal: { name: 'META', description: 'Meu propósito de vida reflete-se no trabalho que faço' },
+      status: { name: 'STATUS', description: 'Minha posição é boa e reconhecida pelas pessoas que trabalham comigo' },
+    },
+  },
+  sv: {
+    actions: { choose_motivator: 'Välj en motiverare', ordering: 'Ordnar...' },
+    motivators: {
+      acceptance: { name: 'ACCEPTANS', description: 'Människorna runt omkring mig accepterar mig för vem jag är och vad jag gör' },
+      curiosity: { name: 'NYFIKENHET', description: 'Jag har mycket att tänka på och utforska' },
+      honor: { name: 'STOLTHET', description: 'Jag känner mig stolt att mina personliga värderingar reflekteras i mitt arbete' },
+      mastery: { name: 'SKICKLIGHET', description: 'Mitt arbete utmanar min kompetens men jag har förmågan för att klara det' },
+      power: { name: 'MAKT', description: 'Jag kan påverka det som händer runt omkring mig' },
+      freedom: { name: 'FRIHET', description: 'Jag jobbar självständigt och tar ansvar för mitt arbete' },
+      relatedness: { name: 'RELATIONER', description: 'Jar har god social kontakt med de jag jobbar med' },
+      order: { name: 'ORDNING', description: 'Det finns tillräkligt med regler för att skapa en stabil miljö' },
+      goal: { name: 'MÅL', description: 'Syftet med mitt liv reflekteras i mitt arbete' },
+      status: { name: 'STATUS', description: 'Min position är bra, och erkänns av de som jobbar med mig' },
+    },
+  },
+  bn: {
+    actions: { choose_motivator: 'একটি প্রেরণা নির্বাচন করুন', ordering: 'অর্ডার করা হচ্ছে...' },
+    motivators: {
+      acceptance: { name: 'গ্রহণযোগ্যতা', description: 'আমার চারপাশের লোকেরা আমার কাজ এবং আমি কে তা অনুমোদন করে' },
+      curiosity: { name: 'কৌতূহল', description: 'আমার তদন্ত এবং চিন্তা করার জন্য প্রচুর জিনিস আছে' },
+      honor: { name: 'সম্মান', description: 'আমি গর্বিত যে আমার ব্যক্তিগত মূল্যবোধ আমার কাজের মধ্যে প্রতিফলিত হয়' },
+      mastery: { name: 'দক্ষতা', description: 'আমার কাজ আমার দক্ষতাকে চ্যালেঞ্জ করে কিন্তু এটি এখনও আমার ক্ষমতার মধ্যে রয়েছে' },
+      power: { name: 'ক্ষমতা', description: 'আমার চারপাশে যা ঘটছে তা প্রভাবিত করার জন্য আমার যথেষ্ট জায়গা আছে' },
+      freedom: { name: 'স্বাধীনতা', description: 'আমার কাজ এবং আমার দায়িত্বের সাথে আমি অন্যদের থেকে স্বাধীন' },
+      relatedness: { name: 'সম্পর্ক', description: 'আমার কাজের লোকেদের সাথে আমার ভাল সামাজিক যোগাযোগ আছে' },
+      order: { name: 'শৃঙ্খলা', description: 'স্থিতিশীল পরিবেশের জন্য পর্যাপ্ত নিয়ম এবং নীতি রয়েছে' },
+      goal: { name: 'লক্ষ্য', description: 'আমার জীবনের উদ্দেশ্য আমার কাজের মধ্যে প্রতিফলিত হয়' },
+      status: { name: 'অবস্থা', description: 'আমার অবস্থান ভাল, এবং যারা আমার সাথে কাজ করে তাদের দ্বারা স্বীকৃত' },
+    },
+  },
+};
+
+const LocaleSelector = {
+  name: 'LocaleSelector',
+  template: `
+    <div class="locale-changer">
+      <span>Change language: </span>
+      <label>
+        <select v-model="$i18n.locale" name="locale-select">
+          <option v-for="locale in $i18n.availableLocales" :key="'locale-' + locale" :value="locale">
+            {{ locale }}
+          </option>
+        </select>
+      </label>
+    </div>
+  `,
+};
+
+const PrioritizedMotivators = {
+  name: 'PrioritizedMotivators',
+  setup() {
+    const { ref } = Vue;
+
+    const shuffled = ref(shuffle(motivators.slice()));
+    const selectedMotivator = ref(null);
+    const dragging = ref(false);
+    const draggedIndex = ref(null);
+
+    const viewingMotivator = (motivator) => {
+      if (!dragging.value) selectedMotivator.value = motivator;
+    };
+    const unsetMotivator = () => {
+      if (!dragging.value) selectedMotivator.value = null;
+    };
+
+    const selectedMotivatorStatus = () => {
+      if (dragging.value) return 'actions.ordering';
+      return selectedMotivator.value?.name ?? 'actions.choose_motivator';
+    };
+
+    const onDragStart = (index) => {
+      dragging.value = true;
+      draggedIndex.value = index;
+    };
+    const onDragEnter = (index) => {
+      const from = draggedIndex.value;
+      if (from === null || from === index) return;
+      const list = shuffled.value;
+      const [moved] = list.splice(from, 1);
+      list.splice(index, 0, moved);
+      draggedIndex.value = index;
+    };
+    const onDragEnd = () => {
+      if (draggedIndex.value !== null) selectedMotivator.value = shuffled.value[draggedIndex.value];
+      dragging.value = false;
+      draggedIndex.value = null;
+    };
+
+    return {
+      motivators: shuffled,
+      selectedMotivator,
+      dragging,
+      draggedIndex,
+      viewingMotivator,
+      unsetMotivator,
+      selectedMotivatorStatus,
+      onDragStart,
+      onDragEnter,
+      onDragEnd,
+    };
+  },
+  template: `
+    <div>
+      <h1>Moving Motivators</h1>
+
+      <p class="motivators-explanation">
+        Ordena los siguientes motivadores de acuerdo a tus preferencias.
+        <br>
+        Al posicionarte en cada ítem podrás ver una descripción para entender qué significa cada uno.
+        <br>
+        Moving Motivators es una de las actividades de Management 3.0
+        (<a href="https://management30.com/practice/moving-motivators/">más info aquí</a>)
+      </p>
+      <div class="motivators-container">
+        <div class="motivators-list">
+          <div
+            v-for="(motivator, index) in motivators"
+            :key="motivator.id"
+            class="motivator-stacked"
+            :class="{ dragging: dragging && index === draggedIndex }"
+            :style="'background-color: ' + motivator.color"
+            draggable="true"
+            @dragstart="onDragStart(index)"
+            @dragenter.prevent="onDragEnter(index)"
+            @dragover.prevent
+            @dragend="onDragEnd"
+            @mouseenter="viewingMotivator(motivator)"
+            @focus="viewingMotivator(motivator)"
+            @mouseleave="unsetMotivator"
+            @blur="unsetMotivator"
+          >
+            <div class="motivator-name">{{ $t(motivator.name) }}</div>
+          </div>
+        </div>
+        <div class="motivator-detail">
+          <h3>{{ $t(selectedMotivatorStatus()) }}</h3>
+          <p v-if="selectedMotivator && !dragging" class="motivator-description">
+            "{{ $t(selectedMotivator.description) }}"
+          </p>
+        </div>
+      </div>
+    </div>
+  `,
+};
+
+const App = {
+  name: 'App',
+  components: { PrioritizedMotivators, LocaleSelector },
+  template: `
+    <div class="moving-motivators-container">
+      <PrioritizedMotivators />
+      <LocaleSelector />
+    </div>
+  `,
+};
+
+const locale = getDefaultLanguage();
+const i18n = VueI18n.createI18n({ locale, messages: translations, fallbackLocale: 'en' });
+
+Vue.createApp(App).use(i18n).mount('#app');
+</script>
+
+</body>
+</html>

@@ -25,13 +25,29 @@ Visor de reportes de vulnerabilidades generados por [Veracode SCA](https://docs.
 - Soporte para múltiples escaneos simultáneos (persiste en `localStorage`)
 - Tema claro/oscuro
 
+### [`moving-motivators/`](moving-motivators/)
+
+Actividad de [Moving Motivators](https://management30.com/practice/moving-motivators/) de Management 3.0: ordenar 10 motivadores según preferencia personal.
+
+**Cómo usarlo:**
+
+1. Abrir `moving-motivators/index.html` en el navegador.
+2. Arrastrar las tarjetas para ordenarlas según tu preferencia.
+3. Posicionarte sobre una tarjeta muestra su descripción.
+
+**Funcionalidades:**
+- Reordenamiento por drag-and-drop
+- Traducciones a 7 idiomas (en, es, de, it, pt, sv, bn)
+
 ## Estructura
 
 ```
 tulbox/
-└── beracode/
-    ├── index.html       # app completa (React via CDN + Babel standalone)
-    └── tweaks-panel.jsx # componente compartido de controles de UI
+├── beracode/
+│   ├── index.html       # app completa (React via CDN + Babel standalone)
+│   └── tweaks-panel.jsx # componente compartido de controles de UI
+└── moving-motivators/
+    └── index.html       # app completa (Vue via CDN, sin build step)
 ```
 
 ## Agregar una herramienta nueva
