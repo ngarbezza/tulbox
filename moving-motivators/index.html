@@ -30,10 +30,10 @@
   .motivators-list { order: 1; width: 40%; }
   .motivator-detail { order: 2; text-align: center; width: 40%; }
 
-  .motivator-stacked { padding: .8em; touch-action: none; }
-  .motivator-stacked.dragging { opacity: .4; }
+  .motivator-stacked { padding: .8em; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+  .motivator-stacked.dragging { opacity: .4; cursor: grabbing; }
   .motivator-name { color: white; font-weight: bolder; text-align: center; text-shadow: 0 0 3px black; }
-  .motivator-stacked:hover { padding: calc(.8em - .15em); border: .15em solid; cursor: grab; }
+  .motivator-stacked:hover { padding: calc(.8em - .15em); border: .15em solid; }
 
   .motivator-description { font-size: 1.5em; font-style: italic; }
 </style>
@@ -220,19 +220,32 @@ const PrioritizedMotivators = {
       return selectedMotivator.value?.name ?? 'actions.choose_motivator';
     };
 
-    const onDragStart = (index) => {
+    const onPointerDown = (event, index) => {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // El pointer puede no estar activo (p. ej. eventos sintéticos); no es crítico para el reordenamiento.
+      }
       dragging.value = true;
       draggedIndex.value = index;
     };
-    const onDragEnter = (index) => {
+    const onPointerMove = (event) => {
+      if (draggedIndex.value === null) return;
+      const hovered = document.elementFromPoint(event.clientX, event.clientY);
+      const row = hovered && hovered.closest('[data-index]');
+      if (!row) return;
+      const index = Number(row.dataset.index);
       const from = draggedIndex.value;
-      if (from === null || from === index) return;
+      if (from === index) return;
       const list = shuffled.value;
       const [moved] = list.splice(from, 1);
       list.splice(index, 0, moved);
       draggedIndex.value = index;
     };
-    const onDragEnd = () => {
+    const onPointerUp = (event) => {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
       if (draggedIndex.value !== null) selectedMotivator.value = shuffled.value[draggedIndex.value];
       dragging.value = false;
       draggedIndex.value = null;
@@ -246,9 +259,9 @@ const PrioritizedMotivators = {
       viewingMotivator,
       unsetMotivator,
       selectedMotivatorStatus,
-      onDragStart,
-      onDragEnter,
-      onDragEnd,
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
     };
   },
   template: `
@@ -268,14 +281,14 @@ const PrioritizedMotivators = {
           <div
             v-for="(motivator, index) in motivators"
             :key="motivator.id"
+            :data-index="index"
             class="motivator-stacked"
             :class="{ dragging: dragging && index === draggedIndex }"
             :style="'background-color: ' + motivator.color"
-            draggable="true"
-            @dragstart="onDragStart(index)"
-            @dragenter.prevent="onDragEnter(index)"
-            @dragover.prevent
-            @dragend="onDragEnd"
+            @pointerdown="onPointerDown($event, index)"
+            @pointermove="onPointerMove"
+            @pointerup="onPointerUp"
+            @pointercancel="onPointerUp"
             @mouseenter="viewingMotivator(motivator)"
             @focus="viewingMotivator(motivator)"
             @mouseleave="unsetMotivator"
