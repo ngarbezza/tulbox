@@ -4,6 +4,8 @@ Caja de herramientas web: utilidades pequeñas, autocontenidas y sin dependencia
 
 Cada herramienta vive en su propia carpeta y corre directamente desde el navegador (sin `npm install`, sin bundler, sin servidor).
 
+[`index.html`](index.html) en la raíz es una landing page con una card por herramienta.
+
 ## Herramientas
 
 ### [`beracode/`](beracode/)
@@ -55,3 +57,4 @@ tulbox/
 1. Crear una carpeta con el nombre de la herramienta.
 2. Poner un `index.html` autocontenido dentro.
 3. Documentarla en este README.
+4. Agregar su card en [`index.html`](index.html).

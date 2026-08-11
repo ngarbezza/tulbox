@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tulbox</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #4493f8;
+    --radius: 8px;
+    --font-ui: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f8fa;
+      --surface: #ffffff;
+      --border: #d0d7de;
+      --text: #1f2328;
+      --text-muted: #656d76;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 3rem 1.5rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+  }
+  header {
+    max-width: 800px;
+    margin: 0 auto 2.5rem;
+  }
+  h1 {
+    margin: 0 0 0.5rem;
+    font-size: 1.75rem;
+  }
+  header p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+  .cards {
+    max-width: 800px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+  }
+  a.card {
+    display: block;
+    padding: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    text-decoration: none;
+    transition: border-color 0.15s ease;
+  }
+  a.card:hover {
+    border-color: var(--accent);
+  }
+  a.card h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+  }
+  a.card p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>tulbox</h1>
+    <p>Caja de herramientas web: utilidades pequeñas, autocontenidas y sin dependencias de build.</p>
+  </header>
+  <div class="cards">
+    <a class="card" href="beracode/index.html">
+      <h2>beracode</h2>
+      <p>Visor de reportes de vulnerabilidades de Veracode SCA.</p>
+    </a>
+    <a class="card" href="moving-motivators/index.html">
+      <h2>moving-motivators</h2>
+      <p>Actividad de Moving Motivators de Management 3.0.</p>
+    </a>
+  </div>
+</body>
+</html>
